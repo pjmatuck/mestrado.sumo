@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netgenerateConfiguration.xsd">
+
+	<input>
+        <net-file value="speed_control.net.xml"/>
+        <route-files value="speed_control.rou.xml"/>
+		<gui-settings-file value="speed_control.gui-settings.cfg"/>
+    </input>
+	
+	<processing>
+		<max-num-vehicles value="5000"/>
+		<max-depart-delay value="1"/>
+	</processing>
+
+	<time>
+        <begin value="0"/>
+        <end value="30000"/>
+    </time>
+	
+	<report>
+		<no-step-log value="True"/>
+	</report>
+
+</configuration>

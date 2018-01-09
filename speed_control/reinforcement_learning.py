@@ -3,7 +3,7 @@ import pandas as pd
 import q_table_element as qtItem
 import random
 
-EPSILON = 0.9   # greedy police
+EPSILON = 0.7   # police
 ALPHA = 0.1     # learning rate
 GAMMA = 0.9    # discount factor
 
@@ -66,6 +66,20 @@ class QLearningTable:
             if actionMaxValue < action[1]:
                 actionMaxValue = action[1]
         return actionMaxValue
+
+    def get_max_action_by_state(self, stateId):
+        actionMaxValue = -1
+        actionMaxId = None
+        if self.check_state_exist(stateId):
+            if len(self.q_table[stateId]) > 0:
+                for action in self.q_table[stateId]:
+                    if actionMaxValue < action[1]:
+                        actionMaxId = action[0]
+                return actionMaxId
+            else:
+                return None
+        else:
+            return None
 
     def add_q_table_item(self, stateId, actionId):
         while stateId > len(self.q_table) - 1:

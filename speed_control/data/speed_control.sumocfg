@@ -9,13 +9,13 @@
     </input>
 	
 	<processing>
-		<max-num-vehicles value="5000"/>
+		<max-num-vehicles value="1000"/>
 		<max-depart-delay value="1"/>
 	</processing>
 
 	<time>
         <begin value="0"/>
-        <end value="30000"/>
+        <end value="900000"/>
     </time>
 	
 	<report>

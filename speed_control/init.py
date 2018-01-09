@@ -9,28 +9,33 @@ import sys
 import random
 import traci
 import time
+import threading
 import reinforcement_learning as rl
 import file_manager as fm
+import chart as chart
 
 # Ordem da matriz que representa a malha viária
-N_NODES = 4
-EPISODES = 2
-HORIZON = 100
+N_NODES = 3
+EPISODES = 1
+HORIZON = 3000
 HORIZON_SIZE = 300
 ITERATION = 0
 ITERATION_STEP = 400
 OCCUPANCY_RESOLUTION = 5
 N_ACTIONS = 4
 REWARD = 0
-EDGES_SHOULD_NOT_CHANGE = ['0/0to1/0', '1/0to1/1', '1/1to2/1', '2/1to2/2',
-                          '2/2to3/2', '3/2to3/3', '3/2to3/3']
+# EDGES_SHOULD_NOT_CHANGE = ['0/0to1/0', '1/0to1/1', '1/1to2/1', '2/1to2/2',
+#                           '2/2to3/2', '3/2to3/3', '3/2to3/3']
 
 arrived_vehicles = 0
 last_arrived_vehicles = 0
 states_list = []
 actions_list = []
 transition_function = []
+arrived_vehicles_data = []
+lanes_speed = [5.5, 9.72, 13.89] #In m/s
 q_table = rl.QLearningTable()
+data_chart = chart.Chart()
 
 # we need to import python modules from the $SUMO_HOME/tools directory
 try:
@@ -363,8 +368,9 @@ def getLanesOccupancy(lanesList):
 def getLanesMaxSpeed(lanesList):
     lanesMaxSpeed = []
     for lane in lanesList:
-        lanesMaxSpeed.append(traci.lane.getMaxSpeed(lane))
-        # print(traci.lane.getMaxSpeed(lane))
+        # lanesMaxSpeed.append(traci.lane.getMaxSpeed(lane))
+        lanesMaxSpeed.append(lanes_speed[1])
+        traci.lane.setMaxSpeed(lane, lanes_speed[1])
     return lanesMaxSpeed
 
 def changeLaneMaxSpeedRandomly(lane):
@@ -379,11 +385,19 @@ def updateLanesMaxSpeed(lanesMaxSpeedList, actionsLanesMaxSpeed):
     i = 0
     updatedLanesMaxSpeed = []
     while i < len(lanesMaxSpeedList):
-        newSpeed = round(lanesMaxSpeedList[i] + actionsLanesMaxSpeed[i],2)
-        if newSpeed < 5.5:
-            newSpeed = 5.5
-        if newSpeed > 21.9:
-            newSpeed = 21.9
+        # newSpeed = round(lanesMaxSpeedList[i] + actionsLanesMaxSpeed[i],2)
+        # if newSpeed < 5.5:
+        #     newSpeed = 5.5
+        # if newSpeed > 21.9:
+        #     newSpeed = 21.9
+        action = actionsLanesMaxSpeed[i]
+        speed_index = lanes_speed.index(lanesMaxSpeedList[i])
+        if action == 1 and speed_index < (len(lanes_speed) - 1):
+            newSpeed = lanes_speed[speed_index + 1]
+        elif action == -1 and speed_index > 0:
+            newSpeed = lanes_speed[speed_index - 1]
+        else:
+            newSpeed = lanesMaxSpeedList[i]
         updatedLanesMaxSpeed.append(newSpeed)
         i += 1
     return updatedLanesMaxSpeed
@@ -407,8 +421,10 @@ def getLanesActionsWithOccupancy(lanesMeanOccupancy):
     while i < len(lanesMeanOccupancy):
         if lanesMeanOccupancy[i] < 0.08:
             lanesMaxSpeedActions.append(1)
-        else:
+        elif lanesMeanOccupancy[i] > 0.1:
             lanesMaxSpeedActions.append(-1)
+        else:
+            lanesMaxSpeedActions.append(0)
         i += 1
     return lanesMaxSpeedActions
 
@@ -419,7 +435,7 @@ def check_element_to_list(element, elementList):
     return
 
 # Laço principal de execução da simulação
-def run():
+def run(episode):
     print(time.ctime())
     global ITERATION
     global state, state_, arrived_vehicles, last_arrived_vehicles
@@ -451,7 +467,10 @@ def run():
             check_element_to_list(state, states_list)
 
             setupFirstState = False
-            print("\nITERATION: " + str(ITERATION) + " | STEP: " + str(step))
+            print("\nITERATION: " + str(ITERATION) + " | STEP: " + str(step) + " | EPISODE: " + str(episode))
+
+            arrived_vehicles_data.append((step + (HORIZON * HORIZON_SIZE * episode), 0))
+            # chart.chart_data = arrived_vehicles_data
 
         if step % HORIZON_SIZE/OCCUPANCY_RESOLUTION == 0 and step is not 0:
             lanesMeanOccupancy += getLanesOccupancy(lanesToChange)
@@ -463,7 +482,15 @@ def run():
             # getLanesOccupancy(allLanesList)
             # actualLanesMaxSpeed = updateLanesMaxSpeed(actualLanesMaxSpeed)
             # action = getLanesMaxSpeedActions(len(lanesToChange))
-            action = getLanesActionsWithOccupancy(lanesMeanOccupancy)
+            if random.random() < q_table.policy:
+                actionId = q_table.get_max_action_by_state(states_list.index(state))
+                if actionId is not None:
+                    action = actions_list[actionId]
+                else:
+                    action = getLanesActionsWithOccupancy(lanesMeanOccupancy)
+            else:
+                action = getLanesActionsWithOccupancy(lanesMeanOccupancy)
+
             lanesMeanOccupancy[:] = []
 
             # Check if action exists and add to list
@@ -482,24 +509,26 @@ def run():
             transition_function.append(
                 [states_list.index(state), actions_list.index(action), states_list.index(state_)])
 
-            # Calcula a quantidade de carros que chegou na origem
-            arrived_vehicles += traci.simulation.getArrivedNumber()
-
             # Definição da recompensa baseada no nº de carros no destino
             if last_arrived_vehicles < arrived_vehicles:
                 reward = 1
             else:
                 reward = -1
             last_arrived_vehicles = arrived_vehicles
+            arrived_vehicles_data.append((step + (HORIZON * HORIZON_SIZE * episode), arrived_vehicles))
+            chart.chart_data = arrived_vehicles_data
+            arrived_vehicles = 0
 
             #Aciona a função de aprendizado da Q-Table
             q_table.Qlearn(states_list.index(state), actions_list.index(action),
                            reward, states_list.index(state_))
 
-            print("\nITERATION: " + str(ITERATION) + " | STEP: " + str(step))
+            print("\nITERATION: " + str(ITERATION) + " | STEP: " + str(step) + " | EPISODE: " + str(episode))
 
             state = state_
-        #arrived_vehicles += traci.simulation.getArrivedNumber()
+
+        # Calcula a quantidade de carros que chegou na origem
+        arrived_vehicles += traci.simulation.getArrivedNumber()
 
         traci.simulationStep()
 
@@ -554,6 +583,10 @@ if __name__ == "__main__":
     else:
         sumoBinary = checkBinary('sumo')
 
+    # t = threading.Thread(data_chart.draw(), name='Chart')
+    # t.daemon = True
+    # t.start()
+
     # Laço de execução dos HORIZONTES
     for h in range(0, EPISODES):
         if h > 0:
@@ -561,10 +594,13 @@ if __name__ == "__main__":
             load_simulation_state([states_list,actions_list,transition_function,q_table.q_table])
         traci.start([sumoBinary, "-c", "data/speed_control.sumocfg", "-S", "-Q"])
         print("\nEPISODE: " + str(h))
-        run()
+        run(h)
         save_simulation_state()
         # if h == 3:
         #     print("Hello moto crois!")
         # get_mean_travel_time(h)
 
     generate_output([states_list,actions_list,transition_function,q_table.q_table])
+    data_chart.set_chart_data(arrived_vehicles_data)
+    data_chart.draw()
+    wait = input("PRESS ENTER TO CONTINUE.")

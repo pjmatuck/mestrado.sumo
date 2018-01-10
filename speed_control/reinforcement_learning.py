@@ -3,7 +3,7 @@ import pandas as pd
 import q_table_element as qtItem
 import random
 
-EPSILON = 0.7   # police
+EPSILON = 0.95   # police
 ALPHA = 0.1     # learning rate
 GAMMA = 0.9    # discount factor
 

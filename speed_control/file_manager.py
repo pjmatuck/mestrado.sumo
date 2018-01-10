@@ -14,4 +14,4 @@ def load_object(file_name):
 
 def generate_output_file(object, file_name):
     with open(output_folder + file_name + ".xml", "w") as f:
-        f.writelines(["%s\n" % item for item in object])
+        f.writelines(["%s\n" % str(item) for item in object])

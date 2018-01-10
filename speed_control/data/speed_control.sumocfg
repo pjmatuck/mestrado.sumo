@@ -3,7 +3,7 @@
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netgenerateConfiguration.xsd">
 
 	<input>
-        <net-file value="speed_control.net.xml"/>
+        <net-file value="speed_control_n4.net.xml"/>
         <route-files value="speed_control.rou.xml"/>
 		<gui-settings-file value="speed_control.gui-settings.cfg"/>
     </input>
@@ -15,7 +15,7 @@
 
 	<time>
         <begin value="0"/>
-        <end value="900000"/>
+        <end value="300000"/>
     </time>
 	
 	<report>

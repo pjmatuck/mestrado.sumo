@@ -16,8 +16,8 @@ import file_manager as fm
 
 # Ordem da matriz que representa a malha viária
 N_NODES = 4
-EPISODES = 1
-HORIZON = 5000
+EPISODES = 25
+HORIZON = 1000
 HORIZON_SIZE = 600
 ITERATION = 0
 # ITERATION_STEP = 400
@@ -33,7 +33,7 @@ states_list = []
 actions_list = []
 transition_function = []
 arrived_vehicles_data = []
-lanes_speed = [5.55, 11.11, 16.66] #In m/s
+lanes_speed = [5.55, 11.11, 16.66, 22.22] #In m/s
 q_table = rl.QLearningTable()
 # data_chart = chart.Chart()
 
@@ -445,7 +445,7 @@ def getLanesActionsWithOccupancy(lanesMeanOccupancy):
     while i < len(lanesMeanOccupancy):
         if lanesMeanOccupancy[i] > 0.5:
             lanesMaxSpeedActions.append(-1)
-        elif lanesMeanOccupancy[i] >= 0 and lanesMeanOccupancy[i] <= 0.3:
+        elif lanesMeanOccupancy[i] >= 0 and lanesMeanOccupancy[i] <= 0.2:
             lanesMaxSpeedActions.append(1)
         else:
             lanesMaxSpeedActions.append(0)
@@ -523,10 +523,12 @@ def run(episode):
         # Realiza as configurações do primeiro estado
         if (setupFirstState is True):
             if episode is 0:
-                state = getLanesMaxSpeed(lanesToChange)
+                # state = getLanesMaxSpeed(lanesToChange)
                 arrived_vehicles_data.append((step + (HORIZON * HORIZON_SIZE * episode), 0))
-            else:
-                state = generate_random_state(lanesToChange)
+            # else:
+                # state = generate_random_state(lanesToChange)
+
+            state = generate_random_state(lanesToChange)
 
             update_network_lanes_maxspeed(lanesToChange, state)
 

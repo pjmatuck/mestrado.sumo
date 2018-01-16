@@ -4,7 +4,8 @@
 
 	<input>
         <net-file value="speed_control_n4.net.xml"/>
-        <route-files value="speed_control.rou.xml"/>
+        <route-files value="speed_control_n4_taz.rou.xml"/>
+		<additional-files value="speed_control_n4.taz.xml"/>
 		<gui-settings-file value="speed_control.gui-settings.cfg"/>
     </input>
 	
@@ -15,7 +16,7 @@
 
 	<time>
         <begin value="0"/>
-        <end value="300000"/>
+        <end value="3000000"/>
     </time>
 	
 	<report>

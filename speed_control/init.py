@@ -15,14 +15,14 @@ import file_manager as fm
 # import chart as chart
 
 # Ordem da matriz que representa a malha viária
-N_NODES = 3
-EPISODES = 10
-HORIZON = 1000
-HORIZON_SIZE = 300
+N_NODES = 4
+EPISODES = 1
+HORIZON = 5000
+HORIZON_SIZE = 600
 ITERATION = 0
 # ITERATION_STEP = 400
 OCCUPANCY_RESOLUTION = 5
-N_ACTIONS = 4
+N_ACTIONS = 3
 REWARD = 0
 # EDGES_SHOULD_NOT_CHANGE = ['0/0to1/0', '1/0to1/1', '1/1to2/1', '2/1to2/2',
 #                           '2/2to3/2', '3/2to3/3', '3/2to3/3']
@@ -33,7 +33,7 @@ states_list = []
 actions_list = []
 transition_function = []
 arrived_vehicles_data = []
-lanes_speed = [5.55, 8.33, 11.11] #In m/s
+lanes_speed = [5.55, 11.11, 16.66] #In m/s
 q_table = rl.QLearningTable()
 # data_chart = chart.Chart()
 
@@ -363,6 +363,14 @@ def getLanesOccupancy(lanesList):
     lanesOcuppancy = []
     for lane in lanesList:
         lanesOcuppancy.append(traci.lane.getLastStepOccupancy(lane))
+
+        #FOR TESTS
+        if traci.lane.getLastStepOccupancy(lane) > 0.95:
+            print(lane + str(traci.lane.getLastStepOccupancy(lane)))
+        elif traci.lane.getLastStepOccupancy(lane) > 0.75:
+            print(lane + str(traci.lane.getLastStepOccupancy(lane)))
+        elif traci.lane.getLastStepOccupancy(lane) > 0.5:
+            print(lane + str(traci.lane.getLastStepOccupancy(lane)))
     return lanesOcuppancy
 
 def getLanesMaxSpeed(lanesList):
@@ -435,14 +443,23 @@ def getLanesActionsWithOccupancy(lanesMeanOccupancy):
     i = 0
     lanesMaxSpeedActions = []
     while i < len(lanesMeanOccupancy):
-        if lanesMeanOccupancy[i] < 0.08:
-            lanesMaxSpeedActions.append(1)
-        elif lanesMeanOccupancy[i] > 0.1:
+        if lanesMeanOccupancy[i] > 0.5:
             lanesMaxSpeedActions.append(-1)
+        elif lanesMeanOccupancy[i] >= 0 and lanesMeanOccupancy[i] <= 0.3:
+            lanesMaxSpeedActions.append(1)
         else:
             lanesMaxSpeedActions.append(0)
         i += 1
     return lanesMaxSpeedActions
+
+def get_random_lanes_actions():
+    i = 0
+    lanesActions = []
+    number_of_lanes = (4*(N_NODES**2 - N_NODES))/2
+    while i < number_of_lanes:
+        lanesActions.append(random.randint(-1,1))
+        i += 1
+    return lanesActions
 
 
 def check_element_to_list(element, elementList):
@@ -460,6 +477,19 @@ def sum_occupancy(occ_list1, occ_list2):
             total_occupancy.append(occ_list1[i] + occ_list2[i])
             i += 1
     return total_occupancy
+
+def reward_by_arrived_veh(last_arrived_veh, arrived_veh):
+    if arrived_vehicles > last_arrived_vehicles * 1.5:
+        reward = 1
+    elif arrived_vehicles > last_arrived_vehicles * 1.25:
+        reward = 0.75
+    elif arrived_vehicles > last_arrived_vehicles * 1.1:
+        reward = 0.5
+    elif arrived_vehicles >= last_arrived_vehicles:
+        reward = 0.25
+    else:
+        reward = -1
+    return reward
 
 # Laço principal de execução da simulação
 def run(episode):
@@ -494,6 +524,7 @@ def run(episode):
         if (setupFirstState is True):
             if episode is 0:
                 state = getLanesMaxSpeed(lanesToChange)
+                arrived_vehicles_data.append((step + (HORIZON * HORIZON_SIZE * episode), 0))
             else:
                 state = generate_random_state(lanesToChange)
 
@@ -505,7 +536,6 @@ def run(episode):
             setupFirstState = False
             print("\nITERATION: " + str(ITERATION) + " | STEP: " + str(step) + " | EPISODE: " + str(episode))
 
-            arrived_vehicles_data.append((step + (HORIZON * HORIZON_SIZE * episode), 0))
             # chart.chart_data = arrived_vehicles_data
 
         # Coleta os dados de ocupação das vias de acordo com a resolução configurada
@@ -521,6 +551,7 @@ def run(episode):
 
             lanesMeanOccupancy = [x / OCCUPANCY_RESOLUTION for x in lanesMeanOccupancy]
 
+            # Avalia a política e define a ação a ser tomada para alteração de estado
             if random.random() < q_table.policy:
                 actionId = q_table.get_max_action_by_state(states_list.index(state))
                 if actionId is not None:
@@ -528,7 +559,7 @@ def run(episode):
                 else:
                     action = getLanesActionsWithOccupancy(lanesMeanOccupancy)
             else:
-                action = getLanesActionsWithOccupancy(lanesMeanOccupancy)
+                action = get_random_lanes_actions()
 
             lanesMeanOccupancy[:] = []
 
@@ -551,10 +582,11 @@ def run(episode):
                 [states_list.index(state), actions_list.index(action), states_list.index(state_)])
 
             # Definição da recompensa baseada no nº de carros no destino
-            if last_arrived_vehicles < arrived_vehicles:
-                reward = 1
-            else:
-                reward = -1
+            # if last_arrived_vehicles < arrived_vehicles:
+            #     reward = 1
+            # else:
+            #     reward = -1
+            reward = reward_by_arrived_veh(last_arrived_vehicles, arrived_vehicles)
 
             last_arrived_vehicles = arrived_vehicles
             arrived_vehicles_data.append((step + (HORIZON * HORIZON_SIZE * episode), arrived_vehicles))

@@ -2,11 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="c50a90ba-07d3-4fc7-b866-0ed01d16f214" name="Default" comment="">
-      <change type="DELETED" beforePath="$PROJECT_DIR$/data/speed_control.rou.xml" afterPath="" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/data/speed_control.sumocfg" afterPath="$PROJECT_DIR$/data/speed_control.sumocfg" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/init.py" afterPath="$PROJECT_DIR$/init.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/reinforcement_learning.py" afterPath="$PROJECT_DIR$/reinforcement_learning.py" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -301,7 +297,14 @@
       <option name="project" value="LOCAL" />
       <updated>1515563474589</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Correção de código&#10;Criação do gerador de gráficos independente&#10;Teste com n4">
+      <created>1516080281609</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1516080281609</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="ToolWindowManager">

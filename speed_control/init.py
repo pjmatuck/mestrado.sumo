@@ -15,14 +15,14 @@ import file_manager as fm
 # import chart as chart
 
 # Ordem da matriz que representa a malha viária
-N_NODES = 4
-EPISODES = 10
-HORIZON = 1000
-HORIZON_SIZE = 600
+N_NODES = 3
+EPISODES = 50
+HORIZON = 250
+HORIZON_SIZE = 300
 ITERATION = 0
 # ITERATION_STEP = 400
 OCCUPANCY_RESOLUTION = 5
-N_ACTIONS = 2
+N_ACTIONS = 3
 REWARD = 0
 # EDGES_SHOULD_NOT_CHANGE = ['0/0to1/0', '1/0to1/1', '1/1to2/1', '2/1to2/2',
 #                           '2/2to3/2', '3/2to3/3', '3/2to3/3']
@@ -534,12 +534,12 @@ def run(episode):
         # Realiza as configurações do primeiro estado
         if (setupFirstState is True):
             if episode is 0:
-                # state = getLanesMaxSpeed(lanesToChange)
+                state = getLanesMaxSpeed(lanesToChange)
                 arrived_vehicles_data.append((step + (HORIZON * HORIZON_SIZE * episode), 0))
             # else:
-                # state = generate_random_state(lanesToChange)
+                state = generate_random_state(lanesToChange)
 
-            state = generate_random_state(lanesToChange)
+            # state = generate_random_state(lanesToChange)
 
             update_network_lanes_maxspeed(lanesToChange, state)
 
@@ -565,16 +565,16 @@ def run(episode):
             lanesMeanOccupancy = [x / OCCUPANCY_RESOLUTION for x in lanesMeanOccupancy]
 
             # Avalia a política e define a ação a ser tomada para alteração de estado
-            # if random.random() < q_table.policy:
-            #     actionId = q_table.get_max_action_by_state(states_list.index(state))
-            #     if actionId is not None:
-            #         action = actions_list[actionId]
-            #     else:
-            #         action = getLanesActionsWithOccupancy(lanesMeanOccupancy)
-            # else:
-            #     action = get_random_lanes_actions()
+            if random.random() < q_table.policy:
+                actionId = q_table.get_max_action_by_state(states_list.index(state))
+                if actionId is not None:
+                    action = actions_list[actionId]
+                else:
+                    action = getLanesActionsWithOccupancy(lanesMeanOccupancy)
+            else:
+                action = get_random_lanes_actions()
 
-            action = get_random_lanes_actions()
+            # action = get_random_lanes_actions()
 
             lanesMeanOccupancy[:] = []
 

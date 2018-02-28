@@ -16,7 +16,7 @@ import file_manager as fm
 
 # Ordem da matriz que representa a malha viária
 N_NODES = 3
-EPISODES = 500
+EPISODES = 100
 HORIZON = 100
 HORIZON_SIZE = 300
 ITERATION = 0

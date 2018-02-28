@@ -157,7 +157,7 @@ class QLearningTable:
         # Assume o valor da ação referente ao 's' e 'a' na Q-Table
         # q_predict = self.get_q_table_item(s, a).value
         # q_predict = self.q_table[s][a]
-        q_predict = self.get_action_value(s, a)
+        # q_predict = self.get_action_value(s, a)
         if self.check_state_exist(s_) and self.q_table[s_] is not []:
             # Calcula o valor da ação para o próximo estado dado o estado anterior
             q_target = r + self.reward_discount * self.get_max_action_value(s_, a)
@@ -169,6 +169,6 @@ class QLearningTable:
         #         qt_item.value = (1 - self.lr)* qt_item.value +\
         #                         self.lr * (q_target - q_predict)
         # self.q_table[s][a] = (1 - self.lr) * self.q_table[s][a] + self.lr * (q_target - q_predict)
-        action_value =  (1 - self.lr) * self.get_action_value(s,a) + self.lr * (q_target - q_predict)
+        action_value =  (1 - self.lr) * self.get_action_value(s,a) + self.lr * (q_target)
         self.set_action_value(s,a,action_value)
         #Just for commit

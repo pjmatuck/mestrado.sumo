@@ -171,3 +171,4 @@ class QLearningTable:
         # self.q_table[s][a] = (1 - self.lr) * self.q_table[s][a] + self.lr * (q_target - q_predict)
         action_value =  (1 - self.lr) * self.get_action_value(s,a) + self.lr * (q_target - q_predict)
         self.set_action_value(s,a,action_value)
+        #Just for commit

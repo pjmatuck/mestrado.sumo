@@ -719,6 +719,7 @@ if __name__ == "__main__":
         # get_mean_travel_time(h)
 
     generate_output([states_list,actions_list,transition_function,q_table.q_table,arrived_vehicles_data])
+    # Just for commit
     # data_chart.set_chart_data(arrived_vehicles_data)
     # data_chart.draw()
 

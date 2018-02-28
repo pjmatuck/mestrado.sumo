@@ -16,8 +16,8 @@ import file_manager as fm
 
 # Ordem da matriz que representa a malha viária
 N_NODES = 3
-EPISODES = 50
-HORIZON = 250
+EPISODES = 500
+HORIZON = 100
 HORIZON_SIZE = 300
 ITERATION = 0
 # ITERATION_STEP = 400
@@ -28,15 +28,25 @@ REWARD = 0
 #                           '2/2to3/2', '3/2to3/3', '3/2to3/3']
 
 arrived_vehicles = 0
+departed_vehicles = 0
 last_arrived_vehicles = 0
 max_number_arrived_veh = 0
 states_list = []
 actions_list = []
 transition_function = []
 arrived_vehicles_data = []
-lanes_speed = [5.55, 22.22] #In m/s
+lanes_speed = [0.01, 4.16, 8.33, 12.5, 16.66] #In m/s
 q_table = rl.QLearningTable()
-# data_chart = chart.Chart()
+preset_action_list = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+                      [1, 1, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1],
+                      [-1, -1, -1, 0, -1, 0, -1, 0, 0, -1, -1, -1],
+                      [0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0],
+                      [0, 0, 0, -1, 0, -1, 0, -1, -1, 0, 0, 0],
+                      [0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 1, 1],
+                      [0, -1, 0, 0, 0, -1, -1, -1, 0, 0, -1, -1],
+                      [1, 0, 1, 1, 1, 0, 0, 0, 1, 1, 0, 0],
+                      [-1, 0, -1, -1, -1, 0, 0, 0, -1, -1, 0, 0],
+                      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]]
 
 # we need to import python modules from the $SUMO_HOME/tools directory
 try:
@@ -49,16 +59,6 @@ except ImportError:
     sys.exit(
         "please declare environment variable 'SUMO_HOME' as the root directory of your sumo installation"
         " (it should contain folders 'bin', 'tools' and 'docs')")
-
-# The program looks like this
-#    <tlLogic id="0" type="static" programID="0" offset="0">
-# the locations of the tls are      NESW
-#        <phase duration="31" state="GrGr"/>
-#        <phase duration="6"  state="yryr"/>
-#        <phase duration="31" state="rGrG"/>
-#        <phase duration="6"  state="ryry"/>
-#    </tlLogic>
-
 
 # Realiza o parse do output XML (tripinfo) e calcula o Tempo de Viagem Médio
 def get_mean_travel_time(horizon):
@@ -378,7 +378,7 @@ def getLanesMaxSpeed(lanesList):
     lanesMaxSpeed = []
     for lane in lanesList:
         # lanesMaxSpeed.append(traci.lane.getMaxSpeed(lane))
-        lanesMaxSpeed.append(lanes_speed[1])
+        lanesMaxSpeed.append(lanes_speed[int(len(lanes_speed)/2)])
         # traci.lane.setMaxSpeed(lane, lanes_speed[1])
     return lanesMaxSpeed
 
@@ -390,6 +390,10 @@ def generate_random_state(lanesList):
         lanesMaxSpeed.append(speed)
         # traci.lane.setMaxSpeed(lane, speed)
     return lanesMaxSpeed
+
+def get_random_state(state):
+    action = random.choice(preset_action_list)
+    return updateLanesMaxSpeed(state, action)
 
 def update_network_lanes_maxspeed(lanesList, maxSpeedLanesList):
     i = 0
@@ -502,6 +506,17 @@ def reward_by_max_arrived_veh(arrived_veh, max_arrived_veh):
         reward = -1
     return reward
 
+def reward_by_delta_arrived_departed_veh(arrived_veh, departed_veh):
+    # if departed_vehicles - arrived_vehicles <= 0:
+    #     reward = 1
+    # else:
+    #     reward = 0
+    # return reward
+    return arrived_vehicles - departed_vehicles
+
+def get_random_action():
+    return random.choice(preset_action_list)
+
 # Laço principal de execução da simulação
 def run(episode):
     print(time.ctime())
@@ -518,9 +533,12 @@ def run(episode):
         way = check_lane_way(lane)
         if way == "SN" or way == "WE":
             lanesToChange.append(lane)
+        else:
+            traci.lane.setMaxSpeed(lane, 0.00)
 
     """execute the TraCI control loop"""
     step = 0
+    departed_vehicles = 0
     arrived_vehicles = 0
     last_arrived_vehicles = 0
     reward = 0
@@ -537,7 +555,8 @@ def run(episode):
                 state = getLanesMaxSpeed(lanesToChange)
                 arrived_vehicles_data.append((step + (HORIZON * HORIZON_SIZE * episode), 0))
             # else:
-                state = generate_random_state(lanesToChange)
+            #     state = generate_random_state(lanesToChange)
+            state = get_random_state(state)
 
             # state = generate_random_state(lanesToChange)
 
@@ -565,24 +584,26 @@ def run(episode):
             lanesMeanOccupancy = [x / OCCUPANCY_RESOLUTION for x in lanesMeanOccupancy]
 
             # Avalia a política e define a ação a ser tomada para alteração de estado
-            if random.random() < q_table.policy:
+            if random.random() < rl.EPSILON:
                 actionId = q_table.get_max_action_by_state(states_list.index(state))
                 if actionId is not None:
-                    action = actions_list[actionId]
+                    action = preset_action_list[actionId]
                 else:
-                    action = getLanesActionsWithOccupancy(lanesMeanOccupancy)
+                    # action = getLanesActionsWithOccupancy(lanesMeanOccupancy)
+                    action = get_random_action()
             else:
-                action = get_random_lanes_actions()
+                # action = get_random_lanes_actions()
+                action = get_random_action()
 
             # action = get_random_lanes_actions()
 
-            lanesMeanOccupancy[:] = []
+            # lanesMeanOccupancy[:] = []
 
             # Check if action exists and add to list
-            check_element_to_list(action, actions_list)
+            # check_element_to_list(action, actions_list)
 
             # Adiciona estado anterior e ação a Q-Table
-            q_table.add_q_table_item(states_list.index(state), actions_list.index(action))
+            q_table.add_q_table_item(states_list.index(state), preset_action_list.index(action))
 
             # Define o estado resultado a partir do estado anterior e a ação tomada
             state_ = updateLanesMaxSpeed(state, action)
@@ -594,26 +615,28 @@ def run(episode):
 
             # Define a função de transição
             transition_function.append(
-                [states_list.index(state), actions_list.index(action), states_list.index(state_)])
+                [states_list.index(state), preset_action_list.index(action), states_list.index(state_)])
 
             # Definição da recompensa baseada no nº de carros no destino
             # if last_arrived_vehicles < arrived_vehicles:
             #     reward = 1
             # else:
             #     reward = -1
-            if max_number_arrived_veh < arrived_vehicles:
-                max_number_arrived_veh = arrived_vehicles
+            # if max_number_arrived_veh < arrived_vehicles:
+            #     max_number_arrived_veh = arrived_vehicles
 
             # reward = reward_by_arrived_veh(last_arrived_vehicles, arrived_vehicles)
-            reward = reward_by_max_arrived_veh(arrived_vehicles, max_number_arrived_veh)
+            # reward = reward_by_max_arrived_veh(arrived_vehicles, max_number_arrived_veh)
+            reward = reward_by_delta_arrived_departed_veh(arrived_vehicles, departed_vehicles)
 
-            last_arrived_vehicles = arrived_vehicles
+            # last_arrived_vehicles = arrived_vehicles
             arrived_vehicles_data.append((step + (HORIZON * HORIZON_SIZE * episode), arrived_vehicles))
             # chart.chart_data = arrived_vehicles_data
             arrived_vehicles = 0
+            departed_vehicles = 0
 
             #Aciona a função de aprendizado da Q-Table
-            q_table.Qlearn(states_list.index(state), actions_list.index(action),
+            q_table.Qlearn(states_list.index(state), preset_action_list.index(action),
                            reward, states_list.index(state_))
 
             print("\nITERATION: " + str(ITERATION) + " | STEP: " + str(step) + " | EPISODE: " + str(episode))
@@ -621,7 +644,8 @@ def run(episode):
             state = state_
 
         # Calcula a quantidade de carros que chegou na origem
-        arrived_vehicles += traci.simulation.getArrivedNumber()
+        arrived_vehicles  += traci.simulation.getArrivedNumber()
+        departed_vehicles += traci.simulation.getDepartedNumber()
 
         traci.simulationStep()
 
@@ -679,6 +703,8 @@ if __name__ == "__main__":
 
     # Laço de execução dos HORIZONTES
     for h in range(0, EPISODES):
+        if h is 0:
+            initial_epsilon = rl.EPSILON
         if h > 0:
             clean_lists([states_list,actions_list,transition_function,q_table.q_table])
             load_simulation_state([states_list,actions_list,transition_function,q_table.q_table])
@@ -686,6 +712,8 @@ if __name__ == "__main__":
         print("\nEPISODE: " + str(h))
         run(h)
         save_simulation_state()
+        if rl.EPSILON < 0.95:
+            rl.EPSILON += (1 - initial_epsilon)/(EPISODES/2)
         # if h == 3:
         #     print("Hello moto crois!")
         # get_mean_travel_time(h)

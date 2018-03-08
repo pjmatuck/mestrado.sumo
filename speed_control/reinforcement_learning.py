@@ -61,19 +61,20 @@ class QLearningTable:
                 return
 
     def get_max_action_value(self, stateId, actionId):
-        actionMaxValue = -1
+        actionMaxValue = -100000
         for action in self.q_table[stateId]:
             if actionMaxValue < action[1]:
                 actionMaxValue = action[1]
         return actionMaxValue
 
-    def get_max_action_by_state(self, stateId):
-        actionMaxValue = -1
+    def get_max_action_id(self, stateId):
+        actionMaxValue = -100000
         actionMaxId = None
         if self.check_state_exist(stateId):
             if len(self.q_table[stateId]) > 0:
                 for action in self.q_table[stateId]:
                     if actionMaxValue < action[1]:
+                        actionMaxValue = action[1]
                         actionMaxId = action[0]
                 return actionMaxId
             else:

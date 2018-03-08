@@ -2,5 +2,5 @@
 
 <routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
 	<vType id="normal car" vClass="passenger" maxSpeed="40" speedFactor="0.9" speedDev="0.2" sigma="0.5" color="1,1,1"/>
-	<flow id="normal" type="normal car" begin="0" number="300000" fromTaz="origin" toTaz="destination"/>	
+	<flow id="normal" type="normal car" begin="0" number="30000" fromTaz="origin" toTaz="destination"/>	
 </routes>

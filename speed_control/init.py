@@ -16,7 +16,7 @@ import file_manager as fm
 
 # Ordem da matriz que representa a malha viária
 N_NODES = 3
-EPISODES = 2
+EPISODES = 5
 HORIZON = 100
 HORIZON_SIZE = 300
 ITERATION = 0
@@ -525,12 +525,18 @@ def reward_by_delta_arrived_departed_veh(arrived_veh, departed_veh):
 def get_random_action():
     return random.choice(preset_action_list)
 
+def get_edge_travel_time():
+    edges_list = traci.edge.getIDList()[:(4*(N_NODES**2 - N_NODES))]
+    for ed in edges_list:
+        print(traci.edge.getTraveltime(ed))
+
 # Laço principal de execução da simulação
 def run(episode):
     print(time.ctime())
     global ITERATION
     global state, state_
     global total_arrived_veh
+
 
     # Busca todas as faixas (lanes) da malha
     allLanesList = traci.lane.getIDList()[:(4*(N_NODES**2 - N_NODES))]
@@ -565,9 +571,12 @@ def run(episode):
             arrived_vehicles_data.append((step + (HORIZON * HORIZON_SIZE * episode), 0))
             state = get_random_state(state)
 
+            # traci.edge.adaptTraveltime("1/1to1/2", 200)
+            # traci.edge.adaptTraveltime("1/1to2/1", 2)
+
             # state = generate_random_state(lanesToChange)
 
-            update_network_lanes_maxspeed(lanesToChange, state)
+            # update_network_lanes_maxspeed(lanesToChange, state)
 
             # Check if state exists and add to list
             check_element_to_list(state, states_list)
@@ -615,7 +624,7 @@ def run(episode):
             # Define o estado resultado a partir do estado anterior e a ação tomada
             state_ = updateLanesMaxSpeed(state, action)
 
-            update_network_lanes_maxspeed(lanesToChange, state_)
+            # update_network_lanes_maxspeed(lanesToChange, state_)
 
             # Check if state exists and add to list
             check_element_to_list(state_, states_list)
@@ -649,6 +658,11 @@ def run(episode):
             print("\nITERATION: " + str(ITERATION) + " | STEP: " + str(step) + " | EPISODE: " + str(episode))
 
             state = state_
+
+            # if step == 6000:
+                # get_edge_travel_time()
+                # traci.edge.adaptTraveltime("1/1to1/2", 2)
+                # traci.edge.adaptTraveltime("1/1to2/1", 200)
 
         # Calcula a quantidade de carros que chegou na origem
         arrived_vehicles  += traci.simulation.getArrivedNumber()

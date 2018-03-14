@@ -1,0 +1,6 @@
+<additional>
+		<taz id="origin1" edges="0/0to1/0 0/0to0/1"/>
+		<taz id="origin2" edges="2/0to1/0 2/0to2/1"/>
+		<taz id="destination1" edges="1/2to2/2 2/1to2/2"/>
+		<taz id="destination2" edges="0/1to0/2 1/2to0/2"/> 
+</additional>

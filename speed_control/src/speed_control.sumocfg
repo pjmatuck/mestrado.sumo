@@ -2,16 +2,18 @@
 
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netgenerateConfiguration.xsd">
 
+	<random value="true"/>
+
 	<input>
         <net-file value="speed_control_n3.net.xml"/>
-        <route-files value="speed_control_taz.rou.xml"/>
+        <route-files value="speed_control_n3_dist.rou.xml"/>
 		<additional-files value="speed_control_n3.taz.xml"/>
 		<gui-settings-file value="speed_control.gui-settings.cfg"/>
     </input>
 	
 	<processing>
 		<max-num-vehicles value="1000"/>
-		<max-depart-delay value="1"/>
+		<max-depart-delay value="3"/>
 	</processing>
 
 	<time>

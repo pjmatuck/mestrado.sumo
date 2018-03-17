@@ -16,15 +16,15 @@ import file_manager as fm
 
 # Ordem da matriz que representa a malha viária
 N_NODES = 3
-EPISODES = 5
-HORIZON = 100
-HORIZON_SIZE = 300
+EPISODES = 10
+HORIZON = 50
+HORIZON_SIZE = 600
 ITERATION = 0
 # ITERATION_STEP = 400
 OCCUPANCY_RESOLUTION = 5
 N_ACTIONS = 3
 REWARD = 0
-EXPLORATION_RATE = 50 # in %
+EXPLORATION_RATE = 30 # in %
 # EDGES_SHOULD_NOT_CHANGE = ['0/0to1/0', '1/0to1/1', '1/1to2/1', '2/1to2/2',
 #                           '2/2to3/2', '3/2to3/3', '3/2to3/3']
 
@@ -38,21 +38,13 @@ states_list = []
 actions_list = []
 transition_function = []
 arrived_vehicles_data = []
-lanes_speed = [0.01, 4.16, 8.33, 12.5, 16.66] #In m/s
+lanes_speed = [0.11, 4.16, 8.33, 12.5, 16.66] #In m/s
 q_table = rl.QLearningTable()
-preset_action_list = [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                      [0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0],
-                      [0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0],
-                      [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0],
-                      [1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                      [0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0],
-                      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
-                      [0, -1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0],
-                      [0, 0, 0, 0, -1, 0, -1, 0, 0, 0, 0, 0],
-                      [0, 0, 0, 0, 0, 0, 0, 0, -1, -1, 0, 0],
-                      [-1, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-                      [0, 0, 0, 0, 0, -1, 0, -1, 0, 0, 0, 0],
-                      [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, -1, -1],]
+preset_action_list = [[0,1,0,0,0,1,0,1,0,1,0,0],
+                      [0,-1,0,0,0,-1,0,-1,0,-1,0,0],
+                      [1,0,0,1,0,0,0,0,1,0,0,1],
+                      [-1,0,0,-1,0,0,0,0,-1,0,0,-1],
+                      [0,0,0,0,0,0,0,0,0,0,0,0]]
 
 # we need to import python modules from the $SUMO_HOME/tools directory
 try:
@@ -372,12 +364,12 @@ def getLanesOccupancy(lanesList):
         lanesOcuppancy.append(traci.lane.getLastStepOccupancy(lane))
 
         #FOR TESTS
-        if traci.lane.getLastStepOccupancy(lane) > 0.95:
-            print(lane + str(traci.lane.getLastStepOccupancy(lane)))
-        elif traci.lane.getLastStepOccupancy(lane) > 0.75:
-            print(lane + str(traci.lane.getLastStepOccupancy(lane)))
-        elif traci.lane.getLastStepOccupancy(lane) > 0.5:
-            print(lane + str(traci.lane.getLastStepOccupancy(lane)))
+        # if traci.lane.getLastStepOccupancy(lane) > 0.95:
+        #     print(lane + str(traci.lane.getLastStepOccupancy(lane)))
+        # elif traci.lane.getLastStepOccupancy(lane) > 0.75:
+        #     print(lane + str(traci.lane.getLastStepOccupancy(lane)))
+        # elif traci.lane.getLastStepOccupancy(lane) > 0.5:
+        #     print(lane + str(traci.lane.getLastStepOccupancy(lane)))
     return lanesOcuppancy
 
 def getLanesMaxSpeed(lanesList):

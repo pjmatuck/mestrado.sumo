@@ -1,46 +1,21 @@
 import numpy as np
-import pandas as pd
-import q_table_element as qtItem
 import random
 
-EPSILON = 0.5   # police
+EPSILON = 0.7   # police
 ALPHA = 0.1     # learning rate
 GAMMA = 0.9    # discount factor
 
 class QLearningTable:
     def __init__(self, learning_rate=ALPHA, reward_discount=GAMMA, policy=EPSILON):
-        # self.actions = ACTIONS
         self.lr = ALPHA
         self.reward_discount=GAMMA
         self.policy = EPSILON
-        # self.q_table = pd.DataFrame()
         self.q_table = [[]]
-
-    # Verifica se o estado existe na Q-Table, caso não, adiciona.
-    # def check_q_table_state(self, stateId, actionsByStateList):
-    #     if stateId not in self.q_table.index:
-    #         self.q_table = self.q_table.append(
-    #             pd.Series(
-    #                 actionsByStateList,
-    #                 index = self.q_table.columns,
-    #                 name=stateId
-    #             )
-    #         )
-    # def check_q_table_state(self, stateId, actionsByStateList):
-    #     if stateId > len(self.q_table) - 1:
-    #         self.q_table.append(actionsByStateList)
-    #     else:
-    #         self.q_table[stateId] = actionsByStateList
 
     def add_q_table_state(self):
         self.q_table.append([])
 
     def add_action_to_state(self, stateId, actionId):
-        # if actionId > len(self.q_table[stateId]) - 1:
-        #     i = 0
-        #     while i <= actionId:
-        #         self.q_table[stateId].append(0)
-        #         i += 1
         if self.q_table[stateId] is not []:
             for action in self.q_table[stateId]:
                 if action[0] == actionId:
@@ -95,12 +70,6 @@ class QLearningTable:
         return False
 
     def choose_best_action(self, stateId):
-        best_action_value = -1
-        # for item in self.q_table[stateId]:
-        #     if best_action_value < qt_item.value:
-        #         best_action_value = qt_item.value
-        #         qt_item_best_action = qt_item
-        # return qt_item_best_action
         return max(self.q_table[stateId])
 
     def choose_random_action(self, state):
@@ -155,21 +124,11 @@ class QLearningTable:
     # Q-Learning
     # Q(s,a) <- (1 - alpha) * Q(s,a) + alpha * (R + gamma * maxQ(s_,a))
     def Qlearn(self, s, a, r, s_):
-        # Assume o valor da ação referente ao 's' e 'a' na Q-Table
-        # q_predict = self.get_q_table_item(s, a).value
-        # q_predict = self.q_table[s][a]
-        # q_predict = self.get_action_value(s, a)
         if self.check_state_exist(s_) and self.q_table[s_] is not []:
             # Calcula o valor da ação para o próximo estado dado o estado anterior
             q_target = r + self.reward_discount * self.get_max_action_value(s_, a)
         else:
             q_target = r
 
-        # for qt_item in self.q_table[s.id]:
-        #     if qt_item.actionId == a.id:
-        #         qt_item.value = (1 - self.lr)* qt_item.value +\
-        #                         self.lr * (q_target - q_predict)
-        # self.q_table[s][a] = (1 - self.lr) * self.q_table[s][a] + self.lr * (q_target - q_predict)
         action_value =  (1 - self.lr) * self.get_action_value(s,a) + self.lr * (q_target)
         self.set_action_value(s,a,action_value)
-        #Just for commit

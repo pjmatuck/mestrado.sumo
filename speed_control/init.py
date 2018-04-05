@@ -2,23 +2,22 @@
 from __future__ import absolute_import
 from __future__ import print_function
 from xml.dom import minidom
-from action import Action
 
 import os
 import sys
 import random
 import traci
 import time
-import threading
 import reinforcement_learning as rl
 import file_manager as fm
-# import chart as chart
+import route_manager as rm
+import action as act
 
 # Ordem da matriz que representa a malha viária
-N_NODES = 3
-EPISODES = 10
-HORIZON = 50
-HORIZON_SIZE = 600
+N_NODES = 4
+EPISODES = 30
+HORIZON = 1000
+HORIZON_SIZE = 300
 ITERATION = 0
 # ITERATION_STEP = 400
 OCCUPANCY_RESOLUTION = 5
@@ -31,6 +30,11 @@ EXPLORATION_RATE = 30 # in %
 arrived_vehicles = 0
 total_arrived_veh = 0
 sum_arrived_veh = []
+collisions = 0
+sum_collisions = []
+avg_lane_speed = 0
+sum_avg_lane_speed = []
+
 departed_vehicles = 0
 last_arrived_vehicles = 0
 max_number_arrived_veh = 0
@@ -38,13 +42,23 @@ states_list = []
 actions_list = []
 transition_function = []
 arrived_vehicles_data = []
-lanes_speed = [0.11, 4.16, 8.33, 12.5, 16.66] #In m/s
+lanes_speed = [0.00, 8.33, 16.66] #In m/s
 q_table = rl.QLearningTable()
-preset_action_list = [[0,1,0,0,0,1,0,1,0,1,0,0],
-                      [0,-1,0,0,0,-1,0,-1,0,-1,0,0],
-                      [1,0,0,1,0,0,0,0,1,0,0,1],
-                      [-1,0,0,-1,0,0,0,0,-1,0,0,-1],
-                      [0,0,0,0,0,0,0,0,0,0,0,0]]
+actions = act.Action()
+# preset_action_list = [[1,0,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+#                       [0,1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0],
+#                       [0,0,0,0,1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,1,0,0,0,0],
+#                       [0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0],
+#                       [0,0,0,0,0,0,0,0,1,0,0,1,1,0,0,1,0,0,0,0,0,0,0,0],
+#                       [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,0,1],
+#                       [-1,0,-1,-1,0,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+#                       [0,-1,0,0,0,0,0,-1,0,-1,0,0,0,0,0,0,0,-1,0,0,0,0,0,0],
+#                       [0,0,0,0,-1,0,0,0,0,0,-1,0,0,-1,0,0,0,0,0,-1,0,0,0,0],
+#                       [0,0,0,0,0,0,-1,0,0,0,0,0,0,0,-1,0,-1,0,0,0,0,0,-1,0],
+#                       [0,0,0,0,0,0,0,0,-1,0,0,-1,-1,0,0,-1,0,0,0,0,0,0,0,0],
+#                       [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,-1,-1,0,-1],
+#                       [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]
+preset_action_list = []
 
 # we need to import python modules from the $SUMO_HOME/tools directory
 try:
@@ -122,39 +136,40 @@ def check_state_swipe_lane_status(edge, way, state):
 
 def choose_action(state):
     #Determina randomicamente se abre ou fecha uma via
-    n_lanes_to_close = random.randint(1,N_ACTIONS)
-    n_lanes_to_open = N_ACTIONS - n_lanes_to_close
-
-    i = 0
-    lanes_to_close = []
-    while i < n_lanes_to_close:
-        generated_edge, way = generate_random_edge()
-        if generated_edge not in lanes_to_close: #Garante que não gere duas arestas iguais
-            lanes_to_close.append(generated_edge)
-        else:
-            i -= 1
-        check_state_open_close_lane(generated_edge, way, state, 1)
-        i += 1
-
-    i = 0
-    lanes_to_open = []
-    while i < n_lanes_to_open:
-        generated_edge, way = generate_random_edge()
-        # Garante que não gere duas arestas iguais
-        # Ou determina a abertura de uma via que será fechada na mesma ação
-        if generated_edge not in lanes_to_open or lanes_to_close:
-            lanes_to_open.append(generated_edge)
-        else:
-            i -= 1
-        check_state_open_close_lane(generated_edge, way, state, 0)
-        i += 1
-
-    action = Action(len(actions_list), lanes_to_close, lanes_to_open)
-    check_action_result = check_action_exists(action)
-    if check_action_result is not None:
-        action.id = check_action_result
-    else:
-        actions_list.append(action)
+    # n_lanes_to_close = random.randint(1,N_ACTIONS)
+    # n_lanes_to_open = N_ACTIONS - n_lanes_to_close
+    #
+    # i = 0
+    # lanes_to_close = []
+    # while i < n_lanes_to_close:
+    #     generated_edge, way = generate_random_edge()
+    #     if generated_edge not in lanes_to_close: #Garante que não gere duas arestas iguais
+    #         lanes_to_close.append(generated_edge)
+    #     else:
+    #         i -= 1
+    #     check_state_open_close_lane(generated_edge, way, state, 1)
+    #     i += 1
+    #
+    # i = 0
+    # lanes_to_open = []
+    # while i < n_lanes_to_open:
+    #     generated_edge, way = generate_random_edge()
+    #     # Garante que não gere duas arestas iguais
+    #     # Ou determina a abertura de uma via que será fechada na mesma ação
+    #     if generated_edge not in lanes_to_open or lanes_to_close:
+    #         lanes_to_open.append(generated_edge)
+    #     else:
+    #         i -= 1
+    #     check_state_open_close_lane(generated_edge, way, state, 0)
+    #     i += 1
+    #
+    # action = Action(len(actions_list), lanes_to_close, lanes_to_open)
+    # check_action_result = check_action_exists(action)
+    # if check_action_result is not None:
+    #     action.id = check_action_result
+    # else:
+    #     actions_list.append(action)
+    action = 0
     return action
 
 # Sistema de geração randomica de arestas no formato "a/btoc/d"
@@ -397,7 +412,11 @@ def get_random_state(state):
 def update_network_lanes_maxspeed(lanesList, maxSpeedLanesList):
     i = 0
     while i < len(lanesList):
-        traci.lane.setMaxSpeed(lanesList[i], maxSpeedLanesList[i])
+        if maxSpeedLanesList[i] <= 0.00:
+            traci.lane.setDisallowed(lanesList[i], "passenger")
+        else:
+            traci.lane.setAllowed(lanesList[i], "passenger")
+            traci.lane.setMaxSpeed(lanesList[i], maxSpeedLanesList[i])
         i += 1
     return
 
@@ -481,17 +500,11 @@ def sum_occupancy(occ_list1, occ_list2):
             i += 1
     return total_occupancy
 
-def reward_by_arrived_veh(last_arrived_veh, arrived_veh):
-    if arrived_vehicles > last_arrived_vehicles * 1.5:
-        reward = 1
-    elif arrived_vehicles > last_arrived_vehicles * 1.25:
-        reward = 0.75
-    elif arrived_vehicles > last_arrived_vehicles * 1.1:
-        reward = 0.5
-    elif arrived_vehicles >= last_arrived_vehicles:
-        reward = 0.25
+def reward_by_arrived_veh(arrived_veh):
+    if arrived_veh == 0:
+        reward = - 100
     else:
-        reward = -1
+        reward = arrived_veh * 2
     return reward
 
 def reward_by_max_arrived_veh(arrived_veh, max_arrived_veh):
@@ -505,14 +518,13 @@ def reward_by_max_arrived_veh(arrived_veh, max_arrived_veh):
         reward = -1
     return reward
 
-def reward_by_delta_arrived_departed_veh(arrived_veh, departed_veh):
+# def reward_by_delta_arrived_departed_veh(arrived_veh, departed_veh):
     # if departed_vehicles - arrived_vehicles <= 0:
     #     reward = 1
     # else:
     #     reward = 0
     # return reward
     # return arrived_vehicles - departed_vehicles
-    return arrived_veh
 
 def get_random_action():
     return random.choice(preset_action_list)
@@ -522,31 +534,45 @@ def get_edge_travel_time():
     for ed in edges_list:
         print(traci.edge.getTraveltime(ed))
 
+def get_avg_lanes_speed(lanesList):
+    avg_speed = 0
+    for lane in lanesList:
+        avg_speed += float(traci.lane.getMaxSpeed(lane))
+    avg_speed = avg_speed/len(lanesList)
+    return avg_speed
+
 # Laço principal de execução da simulação
 def run(episode):
     print(time.ctime())
     global ITERATION
-    global state, state_
-    global total_arrived_veh
+    global state, state_, preset_action_list
+    global total_arrived_veh, collisions, avg_lane_speed
 
 
     # Busca todas as faixas (lanes) da malha
     allLanesList = traci.lane.getIDList()[:(4*(N_NODES**2 - N_NODES))]
+    allEdgesList = traci.edge.getIDList()[:(4*(N_NODES**2 - N_NODES))]
+    allNodesList = traci.junction.getIDList()[:N_NODES**2]
+
+    preset_action_list = actions.GenerateActionsFromLanes(allLanesList)
+
+    routeManager = rm.RouteManager(allNodesList, allEdgesList)
 
     # Define quais faixas deverão ser alteradas.
     # Neste caso: apenas aquelas sentido Sul -> Norte e Oeste -> Leste
-    lanesToChange = []
-    for lane in allLanesList:
-        way = check_lane_way(lane)
-        if way == "SN" or way == "WE":
-            lanesToChange.append(lane)
-        else:
-            traci.lane.setMaxSpeed(lane, 0.00)
+    lanesToChange = allLanesList
+    # for lane in allLanesList:
+    #     way = check_lane_way(lane)
+    #     if way == "SN" or way == "WE":
+    #         lanesToChange.append(lane)
+    #     else:
+    #         traci.lane.setMaxSpeed(lane, 0.00)
 
     """execute the TraCI control loop"""
     step = 0
     departed_vehicles = 0
     arrived_vehicles = 0
+    colliding_vehicles = 0
     last_arrived_vehicles = 0
     reward = 0
     ITERATION = 0
@@ -563,18 +589,17 @@ def run(episode):
             arrived_vehicles_data.append((step + (HORIZON * HORIZON_SIZE * episode), 0))
             state = get_random_state(state)
 
-            # traci.edge.adaptTraveltime("1/1to1/2", 200)
-            # traci.edge.adaptTraveltime("1/1to2/1", 2)
-
             # state = generate_random_state(lanesToChange)
 
-            # update_network_lanes_maxspeed(lanesToChange, state)
+            update_network_lanes_maxspeed(lanesToChange, state)
 
             # Check if state exists and add to list
             check_element_to_list(state, states_list)
 
             setupFirstState = False
             print("\nITERATION: " + str(ITERATION) + " | STEP: " + str(step) + " | EPISODE: " + str(episode))
+
+            avg_lane_speed += get_avg_lanes_speed(allLanesList)
 
             # chart.chart_data = arrived_vehicles_data
 
@@ -616,7 +641,7 @@ def run(episode):
             # Define o estado resultado a partir do estado anterior e a ação tomada
             state_ = updateLanesMaxSpeed(state, action)
 
-            # update_network_lanes_maxspeed(lanesToChange, state_)
+            update_network_lanes_maxspeed(lanesToChange, state_)
 
             # Check if state exists and add to list
             check_element_to_list(state_, states_list)
@@ -635,7 +660,12 @@ def run(episode):
 
             # reward = reward_by_arrived_veh(last_arrived_vehicles, arrived_vehicles)
             # reward = reward_by_max_arrived_veh(arrived_vehicles, max_number_arrived_veh)
-            reward = reward_by_delta_arrived_departed_veh(arrived_vehicles, departed_vehicles)
+            reward = reward_by_arrived_veh(arrived_vehicles)
+            if colliding_vehicles > 0:
+                reward += -100 * (colliding_vehicles/2)
+            colliding_vehicles = 0
+
+            avg_lane_speed += get_avg_lanes_speed(allLanesList)
 
             # last_arrived_vehicles = arrived_vehicles
             arrived_vehicles_data.append((step + (HORIZON * HORIZON_SIZE * episode), arrived_vehicles))
@@ -660,6 +690,8 @@ def run(episode):
         arrived_vehicles  += traci.simulation.getArrivedNumber()
         total_arrived_veh += traci.simulation.getArrivedNumber()
         departed_vehicles += traci.simulation.getDepartedNumber()
+        colliding_vehicles += traci.simulation.getCollidingVehiclesNumber()
+        collisions += traci.simulation.getCollidingVehiclesNumber()
         traci.simulationStep()
 
         # Contador do número de passos da simulação
@@ -702,6 +734,8 @@ def generate_output(args_list):
     fm.generate_output_file(args_list[3], "q_table")
     fm.generate_output_file(args_list[4], "arrived_veh_data")
     fm.generate_output_file(args_list[5], "sum_arrived_veh")
+    fm.generate_output_file(args_list[6], "collisions")
+    fm.generate_output_file(args_list[7], "avg_speed")
 
 # Ponto de entrada do script
 if __name__ == "__main__":
@@ -726,13 +760,18 @@ if __name__ == "__main__":
         print("\nEPISODE: " + str(h))
         run(h)
         save_simulation_state()
-        if rl.EPSILON < 0.95:
+        if rl.EPSILON < 0.99:
             rl.EPSILON += (1 - initial_epsilon)/(EPISODES/(100/EXPLORATION_RATE))
         sum_arrived_veh.append(total_arrived_veh)
+        sum_collisions.append(collisions)
+        sum_avg_lane_speed.append(avg_lane_speed/HORIZON)
         total_arrived_veh = 0
+        collisions = 0
+        avg_lane_speed = 0
 
 
     generate_output([states_list,actions_list,transition_function,
-                     q_table.q_table,arrived_vehicles_data, sum_arrived_veh])
+                     q_table.q_table,arrived_vehicles_data, sum_arrived_veh,
+                     sum_collisions, sum_avg_lane_speed])
 
     # wait = input("PRESS ENTER TO CONTINUE.")

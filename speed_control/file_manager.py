@@ -7,7 +7,7 @@ output_folder = "output/"
 
 def create_folder():
     directory = os.path.join(os.getcwd(),output_folder,
-                             datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
+                             datetime.datetime.now().strftime('%Y-%m-%d_%H-%M'))
     os.makedirs(directory, exist_ok=True)
     return directory
 

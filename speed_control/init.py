@@ -13,19 +13,19 @@ import file_manager as fm
 import route_manager as rm
 import action as act
 
-# Ordem da matriz que representa a malha viária
+## Parametros de configuração da simulação
 N_NODES = 4
-EPISODES = 30
-HORIZON = 1000
+LANES_NUMBER = 4*(N_NODES**2 - N_NODES)
+EPISODES = 10
+HORIZON = 100
 HORIZON_SIZE = 300
 ITERATION = 0
-# ITERATION_STEP = 400
 OCCUPANCY_RESOLUTION = 5
 N_ACTIONS = 3
 REWARD = 0
-EXPLORATION_RATE = 30 # in %
-# EDGES_SHOULD_NOT_CHANGE = ['0/0to1/0', '1/0to1/1', '1/1to2/1', '2/1to2/2',
-#                           '2/2to3/2', '3/2to3/3', '3/2to3/3']
+EXPLORATION_RATE = 25 # in %
+LANES_SHOULD_NOT_CHANGE = ["0/0to0/1_0","0/0to1/0_0"]
+ROUTE_MODE = "0"
 
 arrived_vehicles = 0
 total_arrived_veh = 0
@@ -44,20 +44,8 @@ transition_function = []
 arrived_vehicles_data = []
 lanes_speed = [0.00, 8.33, 16.66] #In m/s
 q_table = rl.QLearningTable()
+routeManager = rm.RouteManager()
 actions = act.Action()
-# preset_action_list = [[1,0,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-#                       [0,1,0,0,0,0,0,1,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,0],
-#                       [0,0,0,0,1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,1,0,0,0,0],
-#                       [0,0,0,0,0,0,1,0,0,0,0,0,0,0,1,0,1,0,0,0,0,0,1,0],
-#                       [0,0,0,0,0,0,0,0,1,0,0,1,1,0,0,1,0,0,0,0,0,0,0,0],
-#                       [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,0,1],
-#                       [-1,0,-1,-1,0,-1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-#                       [0,-1,0,0,0,0,0,-1,0,-1,0,0,0,0,0,0,0,-1,0,0,0,0,0,0],
-#                       [0,0,0,0,-1,0,0,0,0,0,-1,0,0,-1,0,0,0,0,0,-1,0,0,0,0],
-#                       [0,0,0,0,0,0,-1,0,0,0,0,0,0,0,-1,0,-1,0,0,0,0,0,-1,0],
-#                       [0,0,0,0,0,0,0,0,-1,0,0,-1,-1,0,0,-1,0,0,0,0,0,0,0,0],
-#                       [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,-1,-1,0,-1],
-#                       [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]]
 preset_action_list = []
 
 # we need to import python modules from the $SUMO_HOME/tools directory
@@ -84,161 +72,123 @@ def get_mean_travel_time(horizon):
     print("Travel Time Average: " + str(round(travelTimeAverage, 2)) + "s")
     return travelTimeAverage
 
-def check_state_open_close_lane(edge, way, state, open_or_close):
-    vector_index = convert_edge_to_vector(edge)
-
-    if open_or_close:
-        if way == "WE":
-            state.WE_roads[vector_index] = 1
-        elif way == "EW":
-            state.EW_roads[vector_index] = 1
-        elif way == "SN":
-            state.SN_roads[vector_index] = 1
-        elif way == "NS":
-            state.NS_roads[vector_index] = 1
-    else:
-        if way == "WE":
-            state.WE_roads[vector_index] = 0
-        elif way == "EW":
-            state.EW_roads[vector_index] = 0
-        elif way == "SN":
-            state.SN_roads[vector_index] = 0
-        elif way == "NS":
-            state.NS_roads[vector_index] = 0
-
-    return state
-
-def check_state_swipe_lane_status(edge, way, state):
-    vector_index = convert_edge_to_vector(edge)
-
-    if way == "WE":
-        if state.WE_roads[vector_index] == 0:
-            state.WE_roads[vector_index] = 1
-        else:
-            state.WE_roads[vector_index] = 0
-    elif way == "EW":
-        if state.EW_roads[vector_index] == 0:
-            state.EW_roads[vector_index] = 1
-        else:
-            state.EW_roads[vector_index] = 0
-    elif way == "SN":
-        if state.SN_roads[vector_index] == 0:
-            state.SN_roads[vector_index] = 1
-        else:
-            state.SN_roads[vector_index] = 0
-    elif way == "NS":
-        if state.NS_roads[vector_index] == 0:
-            state.NS_roads[vector_index] = 1
-        else:
-            state.NS_roads[vector_index] = 0
-
-    return state
-
-def choose_action(state):
-    #Determina randomicamente se abre ou fecha uma via
-    # n_lanes_to_close = random.randint(1,N_ACTIONS)
-    # n_lanes_to_open = N_ACTIONS - n_lanes_to_close
-    #
-    # i = 0
-    # lanes_to_close = []
-    # while i < n_lanes_to_close:
-    #     generated_edge, way = generate_random_edge()
-    #     if generated_edge not in lanes_to_close: #Garante que não gere duas arestas iguais
-    #         lanes_to_close.append(generated_edge)
-    #     else:
-    #         i -= 1
-    #     check_state_open_close_lane(generated_edge, way, state, 1)
-    #     i += 1
-    #
-    # i = 0
-    # lanes_to_open = []
-    # while i < n_lanes_to_open:
-    #     generated_edge, way = generate_random_edge()
-    #     # Garante que não gere duas arestas iguais
-    #     # Ou determina a abertura de uma via que será fechada na mesma ação
-    #     if generated_edge not in lanes_to_open or lanes_to_close:
-    #         lanes_to_open.append(generated_edge)
-    #     else:
-    #         i -= 1
-    #     check_state_open_close_lane(generated_edge, way, state, 0)
-    #     i += 1
-    #
-    # action = Action(len(actions_list), lanes_to_close, lanes_to_open)
-    # check_action_result = check_action_exists(action)
-    # if check_action_result is not None:
-    #     action.id = check_action_result
-    # else:
-    #     actions_list.append(action)
-    action = 0
-    return action
+# def check_state_open_close_lane(edge, way, state, open_or_close):
+#     vector_index = convert_edge_to_vector(edge)
+#
+#     if open_or_close:
+#         if way == "WE":
+#             state.WE_roads[vector_index] = 1
+#         elif way == "EW":
+#             state.EW_roads[vector_index] = 1
+#         elif way == "SN":
+#             state.SN_roads[vector_index] = 1
+#         elif way == "NS":
+#             state.NS_roads[vector_index] = 1
+#     else:
+#         if way == "WE":
+#             state.WE_roads[vector_index] = 0
+#         elif way == "EW":
+#             state.EW_roads[vector_index] = 0
+#         elif way == "SN":
+#             state.SN_roads[vector_index] = 0
+#         elif way == "NS":
+#             state.NS_roads[vector_index] = 0
+#
+#     return state
+#
+# def check_state_swipe_lane_status(edge, way, state):
+#     vector_index = convert_edge_to_vector(edge)
+#
+#     if way == "WE":
+#         if state.WE_roads[vector_index] == 0:
+#             state.WE_roads[vector_index] = 1
+#         else:
+#             state.WE_roads[vector_index] = 0
+#     elif way == "EW":
+#         if state.EW_roads[vector_index] == 0:
+#             state.EW_roads[vector_index] = 1
+#         else:
+#             state.EW_roads[vector_index] = 0
+#     elif way == "SN":
+#         if state.SN_roads[vector_index] == 0:
+#             state.SN_roads[vector_index] = 1
+#         else:
+#             state.SN_roads[vector_index] = 0
+#     elif way == "NS":
+#         if state.NS_roads[vector_index] == 0:
+#             state.NS_roads[vector_index] = 1
+#         else:
+#             state.NS_roads[vector_index] = 0
+#
+#     return state
 
 # Sistema de geração randomica de arestas no formato "a/btoc/d"
-def generate_random_edge():
-    while True:
-        #Set the type and direction to choose the edge
-        movement_type = random.randint(0, 1)  # 0 - Horizontal, 1 - Vertical
-        movement_direction = random.randint(0, 1)  # 0 - Forward, 1 - Backward
-
-        #start from Origin NODE component X
-        node_origin_x = random.randint(0, N_NODES - 1)
-
-        #All the inconsistent situations
-        if node_origin_x == 0:
-            node_origin_y = random.randint(0, N_NODES - 1)
-            movement_direction = 0
-            if node_origin_y == N_NODES - 1:
-                if movement_type == 0:
-                    movement_direction = 0
-                else:
-                    movement_direction = 1
-
-        elif node_origin_x == N_NODES - 1:
-            node_origin_y = random.randint(0, N_NODES - 2)
-            if node_origin_y == N_NODES - 2 or movement_type == 0:
-                movement_direction = 1
-        else:
-            node_origin_y = random.randint(0, N_NODES - 1)
-            if node_origin_y == N_NODES - 1:
-                if movement_type == 1 or node_origin_x == 2:
-                    movement_direction = 1
-
-        if node_origin_y == 0 and movement_type == 1:
-            movement_direction = 0
-
-        #Destiny NODE
-        if movement_type == 0 and movement_direction == 0:
-            node_destiny_x = node_origin_x + 1
-            node_destiny_y = node_origin_y
-            way = "WE"
-        elif movement_type == 0 and movement_direction == 1:
-            node_destiny_x = node_origin_x - 1
-            node_destiny_y = node_origin_y
-            way = "EW"
-        elif movement_type == 1 and movement_direction == 0:
-            node_destiny_x = node_origin_x
-            node_destiny_y = node_origin_y + 1
-            way = "SN"
-        elif movement_type == 1 and movement_direction == 1:
-            node_destiny_x = node_origin_x
-            node_destiny_y = node_origin_y - 1
-            way = "NS"
-
-        edge_name = str(node_origin_x) + "/" + str(node_origin_y) + "to" \
-                    + str(node_destiny_x) + "/" + str(node_destiny_y)
-
-        if not validate_edge(edge_name):
-            break
-
-    return edge_name, way
+# def generate_random_edge():
+#     while True:
+#         #Set the type and direction to choose the edge
+#         movement_type = random.randint(0, 1)  # 0 - Horizontal, 1 - Vertical
+#         movement_direction = random.randint(0, 1)  # 0 - Forward, 1 - Backward
+#
+#         #start from Origin NODE component X
+#         node_origin_x = random.randint(0, N_NODES - 1)
+#
+#         #All the inconsistent situations
+#         if node_origin_x == 0:
+#             node_origin_y = random.randint(0, N_NODES - 1)
+#             movement_direction = 0
+#             if node_origin_y == N_NODES - 1:
+#                 if movement_type == 0:
+#                     movement_direction = 0
+#                 else:
+#                     movement_direction = 1
+#
+#         elif node_origin_x == N_NODES - 1:
+#             node_origin_y = random.randint(0, N_NODES - 2)
+#             if node_origin_y == N_NODES - 2 or movement_type == 0:
+#                 movement_direction = 1
+#         else:
+#             node_origin_y = random.randint(0, N_NODES - 1)
+#             if node_origin_y == N_NODES - 1:
+#                 if movement_type == 1 or node_origin_x == 2:
+#                     movement_direction = 1
+#
+#         if node_origin_y == 0 and movement_type == 1:
+#             movement_direction = 0
+#
+#         #Destiny NODE
+#         if movement_type == 0 and movement_direction == 0:
+#             node_destiny_x = node_origin_x + 1
+#             node_destiny_y = node_origin_y
+#             way = "WE"
+#         elif movement_type == 0 and movement_direction == 1:
+#             node_destiny_x = node_origin_x - 1
+#             node_destiny_y = node_origin_y
+#             way = "EW"
+#         elif movement_type == 1 and movement_direction == 0:
+#             node_destiny_x = node_origin_x
+#             node_destiny_y = node_origin_y + 1
+#             way = "SN"
+#         elif movement_type == 1 and movement_direction == 1:
+#             node_destiny_x = node_origin_x
+#             node_destiny_y = node_origin_y - 1
+#             way = "NS"
+#
+#         edge_name = str(node_origin_x) + "/" + str(node_origin_y) + "to" \
+#                     + str(node_destiny_x) + "/" + str(node_destiny_y)
+#
+#         if not validate_edge(edge_name):
+#             break
+#
+#     return edge_name, way
 
 # Verifica se o edge pode ser bloqueado ou não
-def validate_edge(generated_edge):
-    not_valid = 0
-    for edge in EDGES_SHOULD_NOT_CHANGE:
-        if edge == generated_edge:
-            not_valid = 1
-            return not_valid
-    return not_valid
+# def validate_edge(generated_edge):
+#     not_valid = 0
+#     for edge in EDGES_SHOULD_NOT_CHANGE:
+#         if edge == generated_edge:
+#             not_valid = 1
+#             return not_valid
+#     return not_valid
 
 # Habilita ou desabilita faixa da pista de acordo com a via (edge) e vetor do estado
 # isLaneEnable -> 0: Faixa habilitada para uso / 1: Faixa desabilitada para uso
@@ -249,49 +199,49 @@ def enable_disable_lane(edge, isLaneEnabled):
         traci.lane.setAllowed(edge + "_0", ['passenger'])
 
 # Configura a malha conforme o estado
-def network_setup(state):
-    i = 0
-    while i < len(state.NS_roads):
-        enable_disable_lane(convert_vector_to_edge("NS", i), state.NS_roads[i])
-        i += 1
-
-    i = 0
-    while i < len(state.SN_roads):
-        enable_disable_lane(convert_vector_to_edge("SN", i), state.SN_roads[i])
-        i += 1
-
-    i = 0
-    while i < len(state.EW_roads):
-        enable_disable_lane(convert_vector_to_edge("EW", i), state.EW_roads[i])
-        i += 1
-
-    i = 0
-    while i < len(state.WE_roads):
-        enable_disable_lane(convert_vector_to_edge("WE", i), state.WE_roads[i])
-        i += 1
+# def network_setup(state):
+#     i = 0
+#     while i < len(state.NS_roads):
+#         enable_disable_lane(convert_vector_to_edge("NS", i), state.NS_roads[i])
+#         i += 1
+#
+#     i = 0
+#     while i < len(state.SN_roads):
+#         enable_disable_lane(convert_vector_to_edge("SN", i), state.SN_roads[i])
+#         i += 1
+#
+#     i = 0
+#     while i < len(state.EW_roads):
+#         enable_disable_lane(convert_vector_to_edge("EW", i), state.EW_roads[i])
+#         i += 1
+#
+#     i = 0
+#     while i < len(state.WE_roads):
+#         enable_disable_lane(convert_vector_to_edge("WE", i), state.WE_roads[i])
+#         i += 1
 
 # SISTEMA DE CONVERSÃO DE ARESTA('a/btoc/d') PARA INDICE DO VETOR
-def convert_edge_to_vector(edge):
-    # a/btoc/d
-    a = int(edge[0])
-    b = int(edge[2])
-    c = int(edge[5])
-    d = int(edge[7])
-
-    if c > a:
-        way = "WE"
-        vector_position = a + b*(N_NODES - 1)
-    if a > c:
-        way = "EW"
-        vector_position = c + d*(N_NODES - 1)
-    if d > b:
-        way = "SN"
-        vector_position = b + a*(N_NODES - 1)
-    if b > d:
-        way = "NS"
-        vector_position = d + c*(N_NODES - 1)
-
-    return vector_position
+# def convert_edge_to_vector(edge):
+#     # a/btoc/d
+#     a = int(edge[0])
+#     b = int(edge[2])
+#     c = int(edge[5])
+#     d = int(edge[7])
+#
+#     if c > a:
+#         way = "WE"
+#         vector_position = a + b*(N_NODES - 1)
+#     if a > c:
+#         way = "EW"
+#         vector_position = c + d*(N_NODES - 1)
+#     if d > b:
+#         way = "SN"
+#         vector_position = b + a*(N_NODES - 1)
+#     if b > d:
+#         way = "NS"
+#         vector_position = d + c*(N_NODES - 1)
+#
+#     return vector_position
 
 def check_lane_way(lane):
     # a/btoc/d_0
@@ -377,23 +327,12 @@ def getLanesOccupancy(lanesList):
     lanesOcuppancy = []
     for lane in lanesList:
         lanesOcuppancy.append(traci.lane.getLastStepOccupancy(lane))
-
-        #FOR TESTS
-        # if traci.lane.getLastStepOccupancy(lane) > 0.95:
-        #     print(lane + str(traci.lane.getLastStepOccupancy(lane)))
-        # elif traci.lane.getLastStepOccupancy(lane) > 0.75:
-        #     print(lane + str(traci.lane.getLastStepOccupancy(lane)))
-        # elif traci.lane.getLastStepOccupancy(lane) > 0.5:
-        #     print(lane + str(traci.lane.getLastStepOccupancy(lane)))
     return lanesOcuppancy
 
 def getLanesMaxSpeed(lanesList):
     lanesMaxSpeed = []
     for lane in lanesList:
-        # lanesMaxSpeed.append(traci.lane.getMaxSpeed(lane))
         lanesMaxSpeed.append(lanes_speed[int(len(lanes_speed)/2)])
-        # lanesMaxSpeed.append(40.00)
-        # traci.lane.setMaxSpeed(lane, lanes_speed[1])
     return lanesMaxSpeed
 
 def generate_random_state(lanesList):
@@ -412,11 +351,12 @@ def get_random_state(state):
 def update_network_lanes_maxspeed(lanesList, maxSpeedLanesList):
     i = 0
     while i < len(lanesList):
-        if maxSpeedLanesList[i] <= 0.00:
-            traci.lane.setDisallowed(lanesList[i], "passenger")
-        else:
-            traci.lane.setAllowed(lanesList[i], "passenger")
-            traci.lane.setMaxSpeed(lanesList[i], maxSpeedLanesList[i])
+        if lanesList[i] not in LANES_SHOULD_NOT_CHANGE:
+            if maxSpeedLanesList[i] <= 0.00:
+                traci.lane.setDisallowed(lanesList[i], "passenger")
+            else:
+                traci.lane.setAllowed(lanesList[i], "passenger")
+                traci.lane.setMaxSpeed(lanesList[i], maxSpeedLanesList[i])
         i += 1
     return
 
@@ -432,11 +372,6 @@ def updateLanesMaxSpeed(lanesMaxSpeedList, actionsLanesMaxSpeed):
     i = 0
     updatedLanesMaxSpeed = []
     while i < len(lanesMaxSpeedList):
-        # newSpeed = round(lanesMaxSpeedList[i] + actionsLanesMaxSpeed[i],2)
-        # if newSpeed < 5.5:
-        #     newSpeed = 5.5
-        # if newSpeed > 21.9:
-        #     newSpeed = 21.9
         action = actionsLanesMaxSpeed[i]
         speed_index = lanes_speed.index(lanesMaxSpeedList[i])
         if action == 1 and speed_index < (len(lanes_speed) - 1):
@@ -501,10 +436,10 @@ def sum_occupancy(occ_list1, occ_list2):
     return total_occupancy
 
 def reward_by_arrived_veh(arrived_veh):
-    if arrived_veh == 0:
-        reward = - 100
-    else:
-        reward = arrived_veh * 2
+    # if arrived_veh == 0:
+    #     reward = - 100
+    # else:
+    reward = arrived_veh * 2
     return reward
 
 def reward_by_max_arrived_veh(arrived_veh, max_arrived_veh):
@@ -518,13 +453,13 @@ def reward_by_max_arrived_veh(arrived_veh, max_arrived_veh):
         reward = -1
     return reward
 
-# def reward_by_delta_arrived_departed_veh(arrived_veh, departed_veh):
-    # if departed_vehicles - arrived_vehicles <= 0:
-    #     reward = 1
-    # else:
-    #     reward = 0
-    # return reward
-    # return arrived_vehicles - departed_vehicles
+def reward_by_delta_arrived_departed_veh(arrived_veh, departed_veh):
+    if departed_vehicles - arrived_vehicles <= 0:
+        reward = 1
+    else:
+        reward = 0
+    return reward
+    return arrived_vehicles - departed_vehicles
 
 def get_random_action():
     return random.choice(preset_action_list)
@@ -541,6 +476,24 @@ def get_avg_lanes_speed(lanesList):
     avg_speed = avg_speed/len(lanesList)
     return avg_speed
 
+def choose_action(action):
+    # Avalia a política e define a ação a ser tomada para alteração de estado
+    if random.random() < rl.EPSILON:
+        actionId = q_table.get_max_action_id(states_list.index(state))
+        if actionId is not None:
+            action = preset_action_list[actionId]
+        else:
+            # action = getLanesActionsWithOccupancy(lanesMeanOccupancy)
+            action = get_random_action()
+    else:
+        # action = get_random_lanes_actions()
+        action = get_random_action()
+    return action
+
+def config():
+    # routeManager.GenerateRouteFileWithRouteDistribution(5)
+    routeManager.GenerateRouteFileWithTaz(30000)
+
 # Laço principal de execução da simulação
 def run(episode):
     print(time.ctime())
@@ -550,13 +503,15 @@ def run(episode):
 
 
     # Busca todas as faixas (lanes) da malha
-    allLanesList = traci.lane.getIDList()[:(4*(N_NODES**2 - N_NODES))]
-    allEdgesList = traci.edge.getIDList()[:(4*(N_NODES**2 - N_NODES))]
+    allLanesList = traci.lane.getIDList()[:LANES_NUMBER]
+    allEdgesList = traci.edge.getIDList()[:LANES_NUMBER]
     allNodesList = traci.junction.getIDList()[:N_NODES**2]
+    allTLSList = traci.trafficlight.getIDList()
 
-    preset_action_list = actions.GenerateActionsFromLanes(allLanesList)
+    # preset_action_list = actions.GenerateActionsByLanes(allLanesList)
+    preset_action_list = actions.GenerateActionsByEdges(allLanesList)
 
-    routeManager = rm.RouteManager(allNodesList, allEdgesList)
+    routeManager.Initialize(allNodesList, allEdgesList)
 
     # Define quais faixas deverão ser alteradas.
     # Neste caso: apenas aquelas sentido Sul -> Norte e Oeste -> Leste
@@ -579,123 +534,81 @@ def run(episode):
     setupFirstState = True
     lanesMeanOccupancy = []
     occupancy_res_iterator = 0
+    action = []
 
     while step < HORIZON * HORIZON_SIZE:
 
-        # Realiza as configurações do primeiro estado
+        #1. Realiza as configurações do primeiro estado
         if (setupFirstState is True):
 
             state = getLanesMaxSpeed(lanesToChange)
-            arrived_vehicles_data.append((step + (HORIZON * HORIZON_SIZE * episode), 0))
-            state = get_random_state(state)
-
+            # arrived_vehicles_data.append((step + (HORIZON * HORIZON_SIZE * episode), 0))
+            # state = get_random_state(state)
             # state = generate_random_state(lanesToChange)
-
-            update_network_lanes_maxspeed(lanesToChange, state)
-
+            # update_network_lanes_maxspeed(lanesToChange, state)
             # Check if state exists and add to list
+            ## Adiciona estado na lista de estados
             check_element_to_list(state, states_list)
 
             setupFirstState = False
-            print("\nITERATION: " + str(ITERATION) + " | STEP: " + str(step) + " | EPISODE: " + str(episode))
 
-            avg_lane_speed += get_avg_lanes_speed(allLanesList)
 
-            # chart.chart_data = arrived_vehicles_data
+        print("\nITERATION: " + str(ITERATION) + " | STEP: " + str(step) + " | EPISODE: " + str(episode))
 
-        # Coleta os dados de ocupação das vias de acordo com a resolução configurada
-        if step % (HORIZON_SIZE/OCCUPANCY_RESOLUTION) == 0 and step is not 0:
-            lanesMeanOccupancy = sum_occupancy(lanesMeanOccupancy, getLanesOccupancy(lanesToChange))
+        #2. Define a ação a ser executada
+        action = choose_action(action)
 
-        # Executa os passos a partir do segundo estado (s_)
-        if step % HORIZON_SIZE == 0 and step is not 0:
-            ITERATION += 1
-            # getLanesOccupancy(allLanesList)
-            # actualLanesMaxSpeed = updateLanesMaxSpeed(actualLanesMaxSpeed)
-            # action = getLanesMaxSpeedActions(len(lanesToChange))
+        ## Adiciona estado anterior e ação a Q-Table
+        q_table.add_q_table_item(states_list.index(state), preset_action_list.index(action))
 
-            # lanesMeanOccupancy = [x / OCCUPANCY_RESOLUTION for x in lanesMeanOccupancy]
+        #3. Define o próximo estado a partir da ação no passo 2
+        state_ = updateLanesMaxSpeed(state, action)
 
-            # Avalia a política e define a ação a ser tomada para alteração de estado
-            if random.random() < rl.EPSILON:
-                actionId = q_table.get_max_action_id(states_list.index(state))
-                if actionId is not None:
-                    action = preset_action_list[actionId]
-                else:
-                    # action = getLanesActionsWithOccupancy(lanesMeanOccupancy)
-                    action = get_random_action()
-            else:
-                # action = get_random_lanes_actions()
-                action = get_random_action()
+        ## Atualiza malha
+        update_network_lanes_maxspeed(lanesToChange, state_)
 
-            # action = get_random_lanes_actions()
+        ## Adiciona estado na lista de estados
+        check_element_to_list(state_, states_list)
 
-            # lanesMeanOccupancy[:] = []
+        ## Define a função de transição T(s,a,s_)
+        transition_function.append(
+            [states_list.index(state), preset_action_list.index(action), states_list.index(state_)])
 
-            # Check if action exists and add to list
-            # check_element_to_list(action, actions_list)
+        arrived_vehicles = 0
+        departed_vehicles = 0
 
-            # Adiciona estado anterior e ação a Q-Table
-            q_table.add_q_table_item(states_list.index(state), preset_action_list.index(action))
+        #4. Executa simulação por HORIZON_SIZE passos
+        while(True):
+            traci.simulationStep()
+            step += 1
 
-            # Define o estado resultado a partir do estado anterior e a ação tomada
-            state_ = updateLanesMaxSpeed(state, action)
+            arrived_vehicles += traci.simulation.getArrivedNumber()
+            total_arrived_veh += traci.simulation.getArrivedNumber()
+            departed_vehicles += traci.simulation.getDepartedNumber()
+            colliding_vehicles += traci.simulation.getCollidingVehiclesNumber()
+            collisions += traci.simulation.getCollidingVehiclesNumber()
 
-            update_network_lanes_maxspeed(lanesToChange, state_)
+            if step % HORIZON_SIZE == 0:
+                break
 
-            # Check if state exists and add to list
-            check_element_to_list(state_, states_list)
+        #5. Define recompensa baseada no nº de carros no destino do estado: state
+        reward = reward_by_arrived_veh(arrived_vehicles)
+        # if colliding_vehicles > 0:
+        #     reward += -100 * (colliding_vehicles/2)
+        # colliding_vehicles = 0
 
-            # Define a função de transição
-            transition_function.append(
-                [states_list.index(state), preset_action_list.index(action), states_list.index(state_)])
+        avg_lane_speed += get_avg_lanes_speed(allLanesList)
 
-            # Definição da recompensa baseada no nº de carros no destino
-            # if last_arrived_vehicles < arrived_vehicles:
-            #     reward = 1
-            # else:
-            #     reward = -1
-            # if max_number_arrived_veh < arrived_vehicles:
-            #     max_number_arrived_veh = arrived_vehicles
+        arrived_vehicles_data.append((step + (HORIZON * HORIZON_SIZE * episode), arrived_vehicles))
 
-            # reward = reward_by_arrived_veh(last_arrived_vehicles, arrived_vehicles)
-            # reward = reward_by_max_arrived_veh(arrived_vehicles, max_number_arrived_veh)
-            reward = reward_by_arrived_veh(arrived_vehicles)
-            if colliding_vehicles > 0:
-                reward += -100 * (colliding_vehicles/2)
-            colliding_vehicles = 0
+        #6. Atualiza tabela Q
+        q_table.Qlearn(states_list.index(state), preset_action_list.index(action),
+                       reward, states_list.index(state_))
 
-            avg_lane_speed += get_avg_lanes_speed(allLanesList)
+        #7. Define próximo estado como estado atual para repetir o loop
+        state = state_
 
-            # last_arrived_vehicles = arrived_vehicles
-            arrived_vehicles_data.append((step + (HORIZON * HORIZON_SIZE * episode), arrived_vehicles))
-            # chart.chart_data = arrived_vehicles_data
-            arrived_vehicles = 0
-            departed_vehicles = 0
-
-            #Aciona a função de aprendizado da Q-Table
-            q_table.Qlearn(states_list.index(state), preset_action_list.index(action),
-                           reward, states_list.index(state_))
-
-            print("\nITERATION: " + str(ITERATION) + " | STEP: " + str(step) + " | EPISODE: " + str(episode))
-
-            state = state_
-
-            # if step == 6000:
-                # get_edge_travel_time()
-                # traci.edge.adaptTraveltime("1/1to1/2", 2)
-                # traci.edge.adaptTraveltime("1/1to2/1", 200)
-
-        # Calcula a quantidade de carros que chegou na origem
-        arrived_vehicles  += traci.simulation.getArrivedNumber()
-        total_arrived_veh += traci.simulation.getArrivedNumber()
-        departed_vehicles += traci.simulation.getDepartedNumber()
-        colliding_vehicles += traci.simulation.getCollidingVehiclesNumber()
-        collisions += traci.simulation.getCollidingVehiclesNumber()
-        traci.simulationStep()
-
-        # Contador do número de passos da simulação
-        step += 1
+        ITERATION += 1
 
     traci.close()
     # getLanesOccupancy(allLanesList)
@@ -751,6 +664,7 @@ if __name__ == "__main__":
 
     # Laço de execução dos HORIZONTES
     for h in range(0, EPISODES):
+        config()
         if h is 0:
             initial_epsilon = rl.EPSILON
         if h > 0:
@@ -760,7 +674,7 @@ if __name__ == "__main__":
         print("\nEPISODE: " + str(h))
         run(h)
         save_simulation_state()
-        if rl.EPSILON < 0.99:
+        if rl.EPSILON < 0.98:
             rl.EPSILON += (1 - initial_epsilon)/(EPISODES/(100/EXPLORATION_RATE))
         sum_arrived_veh.append(total_arrived_veh)
         sum_collisions.append(collisions)

@@ -6,8 +6,8 @@
 
 	<input>
         <net-file value="speed_control_n4.net.xml"/>
-        <route-files value="speed_control_n4.rou.xml"/>
-		<additional-files value="speed_control_n4.taz.xml"/>
+        <route-files value="test_speed_control_n4_dist.rou.xml"/>
+		<additional-files value="speed_control_n4.add.xml"/>
 		<gui-settings-file value="speed_control.gui-settings.cfg"/>
     </input>
 	
@@ -22,15 +22,15 @@
 
 	<time>
         <begin value="0"/>
-        <end value="300000"/>
+        <end value="150000"/>
     </time>
 	
 	<routing>
 		<!-- <weights.random-factor value="1000"/> -->
 		<device.rerouting.probability value="1.0"/>
-		<device.rerouting.period value="10"/>
+		<device.rerouting.period value="150"/>
 		<!-- <device.rerouting.adaptation-interval value="50"/> -->
-		<device.rerouting.with-taz value="true"/>
+		<!--<device.rerouting.with-taz value="true"/> -->
 		<routing-algorithm value="dijkstra"/>
 	</routing>
 	

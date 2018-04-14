@@ -1,6 +1,6 @@
 class Action:
 
-    def GenerateActionsFromLanes(self, lanesList):
+    def GenerateActionsByLanes(self, lanesList, tls=False, tlsList=[]):
         actions = []
         action_rise = []
         action_decrease = []
@@ -51,9 +51,51 @@ class Action:
             action_decrease = []
 
         # Insert action = [0,0,0....0]
-        for i in lanesList:
-            action_rise.append(0)
-        actions.append(action_rise)
+        actions.append(self.ActionZero(lanesList))
+
+        if tls is True:
+            actions = self.AddTLSToActions(tlsList, actions)
+
+        return actions
+
+    def GenerateActionsByEdges(self, lanesList, tls=False, tlsList=[]):
+        actions = []
+        action_rise = []
+        action_decrease = []
+
+        for lane in lanesList:
+            way, x1, y1 = self.CheckLaneStatus(lane)
+            if way == "WE" or way == "EW":
+                for lane_ in lanesList:
+                    a1,b1,a2,b2 = self.DecompoundLane(lane_)
+                    if b1 == b2 == y1:
+                        action_rise.append(1)
+                        action_decrease.append(-1)
+                    else:
+                        action_rise.append(0)
+                        action_decrease.append(0)
+            elif way == "SN" or way == "NS":
+                for lane_ in lanesList:
+                    a1,b1,a2,b2 = self.DecompoundLane(lane_)
+                    if a1 == a2 == x1:
+                        action_rise.append(1)
+                        action_decrease.append(-1)
+                    else:
+                        action_rise.append(0)
+                        action_decrease.append(0)
+
+            if action_rise not in actions:
+                actions.append(action_rise)
+            if action_decrease not in actions:
+                actions.append(action_decrease)
+            action_rise = []
+            action_decrease = []
+
+        # Insert action = [0,0,0....0]
+        actions.append(self.ActionZero(lanesList))
+
+        if tls is True:
+            actions = self.AddTLSToActions(tlsList, actions)
 
         return actions
 
@@ -80,4 +122,16 @@ class Action:
         y2 = int(lane[7])
         return x1, y1, x2, y2
 
+    def AddTLSToActions(self, tlsList, actions):
+        for action in actions:
+            for tls in tlsList:
+                action.append(0)
+        return actions
+
+    # Action Zero = [0,0,0....0]
+    def ActionZero(self, lanesList):
+        action = []
+        for i in lanesList:
+            action.append(0)
+        return action
 

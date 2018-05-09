@@ -10,7 +10,7 @@ class RouteManager:
         self.nodesList = nodes_list
         self.edgesList = edges_list
         self.GenerateAdjacencyList()
-        nodes_route_list = list(self.GenerateAllRoutes('0/0',str(numberOfNodes - 1)/3 + "/" + str(numberOfNodes - 1),self.adjacencyList))
+        nodes_route_list = list(self.GenerateAllRoutes('0/0',str(numberOfNodes - 1) + "/" + str(numberOfNodes - 1),self.adjacencyList))
         self.routesList = self.FormatRoutes(nodes_route_list)
 
     def GenerateAdjacencyList(self):
@@ -58,7 +58,7 @@ class RouteManager:
         return routesList
 
     def GenerateRouteFileWithRouteDistribution(self, numberOfRoutes, numberOfCars):
-        with open("src/test_speed_control_n4_dist.rou.xml", "w") as routes:
+        with open("src/speed_control.rou.xml", "w") as routes:
             print("""<?xml version="1.0" encoding="UTF-8"?>\n<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
     <routeDistribution id="routedist1">""", file=routes)
             i = 0
@@ -70,7 +70,7 @@ class RouteManager:
                 i += 1
             print('    </routeDistribution>\n\t<vType id="normal car" vClass="passenger" maxSpeed="40" speedFactor="0.9" speedDev="0.2" sigma="0.5"/>\n\t<flow id="normal" type="normal car"' + str(numberOfCars) + '"route="routedist1"/>\n</routes>', file=routes)
 
-    def GenerateRouteFileWithTaz(self, numberOfCars):
-        with open("src/test_speed_control_n4_dist.rou.xml", "w") as routes:
+    def GenerateRouteFileWithTaz(self, numberOfCars, n_nodes):
+        with open("src/speed_control.rou.xml", "w") as routes:
             print("""<?xml version="1.0" encoding="UTF-8"?>\n<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">""", file=routes)
-            print('\t<vType id="normal car" vClass="passenger" maxSpeed="40" speedFactor="0.9" speedDev="0.2" sigma="0.5"/>\n\t<flow id="normal" type="normal car" begin="0" number="' + str(numberOfCars) + '" fromTaz="origin" toTaz="destination"/>\n</routes>', file=routes)
+            print('\t<vType id="normal car" vClass="passenger" maxSpeed="40" speedFactor="0.9" speedDev="0.2" sigma="0.5"/>\n\t<flow id="normal" type="normal car" begin="0" number="' + str(numberOfCars) + '" fromTaz="origin_n' + str(n_nodes) + '" toTaz="destination_n' + str(n_nodes) + '"/>\n</routes>', file=routes)

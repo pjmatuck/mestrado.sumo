@@ -2,7 +2,7 @@ import numpy as np
 import random
 
 EPSILON = 0.5   # police
-ALPHA = 0.4     # learning rate
+ALPHA = 0.45     # learning rate
 GAMMA = 0.5    # discount factor
 
 class QLearningTable:

@@ -1,0 +1,16 @@
+<additionals>
+	<!-- Traffic Zones -->
+	<additional>
+		<!--<taz id="origin_n4" edges="0/0to1/0 0/0to0/1"/>
+		<taz id="destination_n4" edges="2/3to3/3 3/2to3/3"/> -->
+	</additional>
+	<additional>
+		<!--<taz id="origin_n3" edges="0/0to1/0 0/0to0/1"/>
+		<taz id="destination_n3" edges="1/2to2/2 2/1to2/2"/> -->
+	</additional>
+	<additional>
+		<taz id="origin_n5" edges="0/0to1/0 0/0to0/1"/>
+		<taz id="destination_n5" edges="3/4to4/4 4/3to4/4"/>
+	</additional>
+</additionals>
+

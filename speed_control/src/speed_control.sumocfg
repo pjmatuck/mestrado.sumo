@@ -5,18 +5,18 @@
 	<random value="true"/>
 
 	<input>
-        <net-file value="speed_control_n5.net.xml"/>
-        <route-files value="speed_control.rou.xml"/>
+        <net-file value="no_rl/n5_cross.net.xml"/>
+        <!--<route-files value="speed_control.rou.xml"/>-->
 		<additional-files value="speed_control.add.xml"/>
 		<gui-settings-file value="speed_control.gui-settings.cfg"/>
     </input>
 	
 	<processing>
 		<max-num-vehicles value="1000"/>
-		<max-depart-delay value="3"/>
+		<max-depart-delay value="300"/>
 		<time-to-teleport value="-1"/>
-		<collision.check-junctions value="true"/>
-		<collision.action value="remove"/>
+		<!--<collision.check-junctions value="true"/>
+		<collision.action value="remove"/> -->
 		<ignore-route-errors value="true"/>
 	</processing>
 
@@ -27,11 +27,12 @@
 	
 	<routing>
 		<!-- <weights.random-factor value="1000"/> -->
-		<device.rerouting.probability value="1.0"/>
-		<device.rerouting.period value="300"/>
+		<!--<device.rerouting.probability value="1.0"/>
+		<device.rerouting.period value="500"/> -->
+		
 		<!-- <device.rerouting.adaptation-interval value="50"/> -->
-		<device.rerouting.with-taz value="true"/>
-		<routing-algorithm value="dijkstra"/>
+		<!--<device.rerouting.with-taz value="true"/> -->
+		<!--<routing-algorithm value="astar"/> -->
 	</routing>
 	
 	<report>

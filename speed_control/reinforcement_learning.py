@@ -1,9 +1,9 @@
 import numpy as np
 import random
 
-EPSILON = 0.5   # police
+EPSILON = 0.1   # police
 ALPHA = 0.45     # learning rate
-GAMMA = 0.5    # discount factor
+GAMMA = 0.9    # discount factor
 
 class QLearningTable:
     def __init__(self, learning_rate=ALPHA, reward_discount=GAMMA, policy=EPSILON):
@@ -125,7 +125,7 @@ class QLearningTable:
     def Qlearn(self, s, a, r, s_):
         if self.check_state_exist(s_) and self.q_table[s_] is not []:
             # Calcula o valor da ação para o próximo estado dado o estado anterior
-            learned_value = r + self.   reward_discount * self.get_max_action_value(s_)
+            learned_value = r + self.reward_discount * self.get_max_action_value(s_)
         else:
             learned_value = r
         try:

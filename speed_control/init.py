@@ -7,13 +7,16 @@ import os
 import sys
 import random
 import traci
+import sumolib
 import time
 import reinforcement_learning as rl
 import file_manager as fm
 import route_manager as rm
+import vehicle_manager as vm
 import action as act
 
 ## Parametros de configuração da simulação
+RL_ON = True
 N_NODES = 5
 LANES_NUMBER = 4*(N_NODES**2 - N_NODES)
 EPISODES = 100
@@ -22,9 +25,21 @@ HORIZON_SIZE = 300
 ITERATION = 0
 OCCUPANCY_RESOLUTION = 5
 REWARD = 0
-EXPLORATION_RATE = 30 # in %
+EXPLORATION_RATE = 40 # in %
 LANES_SHOULD_NOT_CHANGE = ["0/0to0/1_0","0/0to1/0_0"]
-ROUTE_MODE = "Taz"
+ROUTE_MODE = "Route"
+NUMBER_OF_CARS_PER_ITERATION = 200
+NUMBER_OF_ROUTES = 7
+FOWARD_ONLY = False
+ACTIONS_BY_LANE = True
+
+ZONE01 = []
+ZONE02 = []
+ZONE03 = []
+
+ZONE01_SPEED = [16.66, 19.44, 22.22]
+ZONE02_SPEED = [11.11, 13.88, 16.66]
+ZONE03_SPEED = [0.00, 5.5, 8.33]
 
 arrived_vehicles = 0
 total_arrived_veh = 0
@@ -41,9 +56,10 @@ states_list = []
 actions_list = []
 transition_function = []
 arrived_vehicles_data = []
-lanes_speed = [0.00, 8.33, 16.66] #In m/s
+lanes_speed = [0.0, 5.5, 11.11, 22.22] #In m/s
 q_table = rl.QLearningTable()
 routeManager = rm.RouteManager()
+vehicleManager = vm.VehicleManager()
 actions = act.Action()
 preset_action_list = []
 
@@ -331,7 +347,8 @@ def getLanesOccupancy(lanesList):
 def getLanesMaxSpeed(lanesList):
     lanesMaxSpeed = []
     for lane in lanesList:
-        lanesMaxSpeed.append(lanes_speed[int(len(lanes_speed)/2)])
+        # lanesMaxSpeed.append(lanes_speed[int(len(lanes_speed)/2)])
+        lanesMaxSpeed.append(traci.lane.getMaxSpeed(lane))
     return lanesMaxSpeed
 
 # def generate_random_state(lanesList):
@@ -347,6 +364,25 @@ def getLanesMaxSpeed(lanesList):
 #     action = random.choice(preset_action_list)
 #     return updateLanesMaxSpeed(state, action)
 
+def define_zones(number_of_zones, lanesList):
+    zone01Speed = 22.22
+    zone02Speed = 11.11
+    zone03Speed = 5.5
+    zones01 = []
+    zones02 = []
+    zones03 = []
+
+    for l in lanesList:
+        if traci.lane.getMaxSpeed(l) == zone01Speed:
+            zones01.append(l)
+        elif traci.lane.getMaxSpeed(l) == zone02Speed:
+            zones02.append(l)
+        elif traci.lane.getMaxSpeed(l) == zone03Speed:
+            zones03.append(l)
+
+    return zones01, zones02, zones03
+
+
 def update_network_lanes_maxspeed(lanesList, maxSpeedLanesList):
     i = 0
     while i < len(lanesList):
@@ -355,7 +391,7 @@ def update_network_lanes_maxspeed(lanesList, maxSpeedLanesList):
                 traci.lane.setDisallowed(lanesList[i], "passenger")
             else:
                 traci.lane.setAllowed(lanesList[i], "passenger")
-                traci.lane.setMaxSpeed(lanesList[i], maxSpeedLanesList[i])
+        traci.lane.setMaxSpeed(lanesList[i], maxSpeedLanesList[i])
         i += 1
     return
 
@@ -382,6 +418,30 @@ def updateLanesMaxSpeed(lanesMaxSpeedList, actionsLanesMaxSpeed):
         updatedLanesMaxSpeed.append(newSpeed)
         i += 1
     return updatedLanesMaxSpeed
+
+def updateLanesMaxSpeedByZones(lanesList, lanesMaxSpeedList, actionsLanesMaxSpeed):
+    i = 0
+    updateLanesMaxSpeed = []
+    while i < len(lanesMaxSpeedList):
+        action = actionsLanesMaxSpeed[i]
+        if lanesList[i] in ZONE01:
+            updateLanesMaxSpeed.append(setNewSpeed(lanesMaxSpeedList[i], ZONE01_SPEED, action))
+        elif lanesList[i] in ZONE02:
+            updateLanesMaxSpeed.append(setNewSpeed(lanesMaxSpeedList[i], ZONE02_SPEED, action))
+        elif lanesList[i] in ZONE03:
+            updateLanesMaxSpeed.append(setNewSpeed(lanesMaxSpeedList[i], ZONE03_SPEED, action))
+        i+=1
+    return updateLanesMaxSpeed
+
+def setNewSpeed(currentSpeed, zoneSpeedRange, action):
+    speed_index = zoneSpeedRange.index(currentSpeed)
+    if action == 1 and speed_index < (len(zoneSpeedRange) - 1):
+        newSpeed = zoneSpeedRange[speed_index + 1]
+    elif action == -1 and speed_index > 0:
+        newSpeed = zoneSpeedRange[speed_index - 1]
+    else:
+        newSpeed = currentSpeed
+    return newSpeed
 
 # def getLanesMaxSpeedActions(lanesMaxSpeedListSize):
 #     lanesMaxSpeedActions = []
@@ -438,7 +498,7 @@ def reward_by_arrived_veh(arrived_veh):
     # if arrived_veh == 0:
     #     reward = - 100
     # else:
-    reward = arrived_veh * 2
+    reward = arrived_veh
     return reward
 
 def reward_by_max_arrived_veh(arrived_veh, max_arrived_veh):
@@ -490,10 +550,35 @@ def choose_action(action):
     return action
 
 def config():
+    allEdgesList = routeManager.GetEdgesList(N_NODES)
+    allNodesList = routeManager.GetNodesList(N_NODES)
+
+    routeManager.Initialize(allNodesList, allEdgesList, N_NODES, FOWARD_ONLY)
+
+    # generate_routes()
+
+def generate_routes():
     if ROUTE_MODE is "Taz":
-        routeManager.GenerateRouteFileWithTaz(30000,N_NODES)
+        routeManager.GenerateRouteFileWithTaz(NUMBER_OF_CARS_PER_ITERATION, N_NODES)
     elif ROUTE_MODE is "Route":
-        routeManager.GenerateRouteFileWithRouteDistribution(30000)
+        routeManager.GenerateRouteFileWithRouteDistribution(6, NUMBER_OF_CARS_PER_ITERATION)
+
+def reroute_waiting_cars():
+    waiting_cars = traci.vehicle.getIDList()
+    reward_decrease = 0
+    for car in waiting_cars:
+        if traci.vehicle.getWaitingTime(car) >= 600:
+            traci.vehicle.rerouteTraveltime(car, currentTravelTimes=False)
+            reward_decrease += 1
+        if traci.vehicle.getWaitingTime(car) >= 1200:
+            traci.vehicle.remove(car)
+        #     step = HORIZON_SIZE * HORIZON
+        #     generate_routes()
+        #     break
+            # reward_decrease -= 1
+        # if traci.vehicle.getWaitingTime(car) >= 1500:
+        #     traci.vehicle.remove(car)
+    return reward_decrease
 
 # Laço principal de execução da simulação
 def run(episode):
@@ -501,28 +586,25 @@ def run(episode):
     global ITERATION
     global state, state_, preset_action_list
     global total_arrived_veh, collisions, avg_lane_speed
+    global ZONE01, ZONE02, ZONE03
 
+    routeManager.AddAllRoutesToTraci()
+
+    if episode is 0:
+        routeManager.SelectRoutes(NUMBER_OF_ROUTES)
 
     # Busca todas as faixas (lanes) da malha
     allLanesList = traci.lane.getIDList()[:LANES_NUMBER]
-    allEdgesList = traci.edge.getIDList()[:LANES_NUMBER]
-    allNodesList = traci.junction.getIDList()[:N_NODES**2]
-    allTLSList = traci.trafficlight.getIDList()
 
-    # preset_action_list = actions.GenerateActionsByLanes(allLanesList)
-    preset_action_list = actions.GenerateActionsByLanes(allLanesList)
+    ZONE01, ZONE02, ZONE03 = define_zones(3, allLanesList)
 
-    routeManager.Initialize(allNodesList, allEdgesList, N_NODES)
+    if ACTIONS_BY_LANE:
+        preset_action_list = actions.GenerateActionsByLanes(allLanesList)
+    else:
+        preset_action_list = actions.GenerateActionsByEdges(allLanesList)
 
     # Define quais faixas deverão ser alteradas.
-    # Neste caso: apenas aquelas sentido Sul -> Norte e Oeste -> Leste
     lanesToChange = allLanesList
-    # for lane in allLanesList:
-    #     way = check_lane_way(lane)
-    #     if way == "SN" or way == "WE":
-    #         lanesToChange.append(lane)
-    #     else:
-    #         traci.lane.setMaxSpeed(lane, 0.00)
 
     """execute the TraCI control loop"""
     step = 0
@@ -539,15 +621,13 @@ def run(episode):
 
     while step < HORIZON * HORIZON_SIZE:
 
+        vehicleManager.AddVehicleToTraci(NUMBER_OF_CARS_PER_ITERATION)
+
         #1. Realiza as configurações do primeiro estado
         if (setupFirstState is True):
 
             state = getLanesMaxSpeed(lanesToChange)
-            # arrived_vehicles_data.append((step + (HORIZON * HORIZON_SIZE * episode), 0))
-            # state = get_random_state(state)
-            # state = generate_random_state(lanesToChange)
-            # update_network_lanes_maxspeed(lanesToChange, state)
-            # Check if state exists and add to list
+
             ## Adiciona estado na lista de estados
             check_element_to_list(state, states_list)
 
@@ -563,10 +643,14 @@ def run(episode):
         q_table.add_q_table_item(states_list.index(state), preset_action_list.index(action))
 
         #3. Define o próximo estado a partir da ação no passo 2
-        state_ = updateLanesMaxSpeed(state, action)
+        state_ = updateLanesMaxSpeedByZones(allLanesList, state, action)
 
         ## Atualiza malha
-        update_network_lanes_maxspeed(lanesToChange, state_)
+        if (RL_ON):
+            update_network_lanes_maxspeed(lanesToChange, state_)
+
+        # Atualiza Rotas com faixas ou ruas com velocidade iguais a 0
+        routeManager.UpdateRoutes(allLanesList)
 
         ## Adiciona estado na lista de estados
         check_element_to_list(state_, states_list)
@@ -592,11 +676,12 @@ def run(episode):
             if step % HORIZON_SIZE == 0:
                 break
 
+        #4.5 Redefine rotas dos carros "travados"
+        reward_decrease = reroute_waiting_cars()
+
         #5. Define recompensa baseada no nº de carros no destino do estado: state
-        reward = reward_by_arrived_veh(arrived_vehicles)
-        # if colliding_vehicles > 0:
-        #     reward += -100 * (colliding_vehicles/2)
-        # colliding_vehicles = 0
+        reward += reward_by_arrived_veh(arrived_vehicles)
+        reward -= reward_decrease
 
         avg_lane_speed += get_avg_lanes_speed(allLanesList)
 
@@ -609,12 +694,10 @@ def run(episode):
         #7. Define próximo estado como estado atual para repetir o loop
         state = state_
 
+
         ITERATION += 1
 
     traci.close()
-    # getLanesOccupancy(allLanesList)
-    # getLanesMaxSpeed(allLanesList)
-
 
 # Define o formato (GUI/Console) de execução da simulação
 def get_options():
@@ -663,9 +746,10 @@ if __name__ == "__main__":
     else:
         sumoBinary = checkBinary('sumo')
 
+    config()
+
     # Laço de execução dos HORIZONTES
     for h in range(0, EPISODES):
-        config()
         if h is 0:
             initial_epsilon = rl.EPSILON
         if h > 0:
@@ -675,7 +759,7 @@ if __name__ == "__main__":
         print("\nEPISODE: " + str(h))
         run(h)
         save_simulation_state()
-        if rl.EPSILON < 0.98:
+        if rl.EPSILON < 0.975:
             rl.EPSILON += (1 - initial_epsilon)/(EPISODES/(100/EXPLORATION_RATE))
         sum_arrived_veh.append(total_arrived_veh)
         sum_collisions.append(collisions)

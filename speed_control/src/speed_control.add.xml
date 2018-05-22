@@ -8,9 +8,17 @@
 		<!--<taz id="origin_n3" edges="0/0to1/0 0/0to0/1"/>
 		<taz id="destination_n3" edges="1/2to2/2 2/1to2/2"/> -->
 	</additional>
-	<additional>
+	<!--<additional>
 		<taz id="origin_n5" edges="0/0to1/0 0/0to0/1"/>
 		<taz id="destination_n5" edges="3/4to4/4 4/3to4/4"/>
+	</additional> -->
+	<additional>
+		<taz id="origin1_n5" edges="0/0to1/0 0/0to0/1"/>
+		<taz id="destination1_n5" edges="3/4to4/4 4/3to4/4"/>
+		<taz id="origin2_n5" edges="0/4to0/3 0/4to1/4"/>
+		<taz id="destination2_n5" edges="3/0to4/0 4/1to4/0"/>
+		<taz id="origin3_n5" edges="4/4to4/3 4/4to3/4"/>
+		<taz id="destination3_n5" edges="2/1to1/1 1/2to1/1"/>
 	</additional>
 </additionals>
 

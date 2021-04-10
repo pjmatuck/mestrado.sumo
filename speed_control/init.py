@@ -16,7 +16,7 @@ import vehicle_manager as vm
 import action as act
 
 ## Parametros de configuração da simulação
-RL_ON = True
+RL_ON = False
 N_NODES = 5
 LANES_NUMBER = 4*(N_NODES**2 - N_NODES)
 EPISODES = 100
@@ -29,7 +29,7 @@ EXPLORATION_RATE = 40 # in %
 LANES_SHOULD_NOT_CHANGE = ["0/0to0/1_0","0/0to1/0_0"]
 ROUTE_MODE = "Route"
 NUMBER_OF_CARS_PER_ITERATION = 200
-NUMBER_OF_ROUTES = 7
+NUMBER_OF_ROUTES = 6
 FOWARD_ONLY = False
 ACTIONS_BY_LANE = True
 

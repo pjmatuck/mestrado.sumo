@@ -70,56 +70,6 @@ class QLearningTable:
             return True
         return False
 
-    # def choose_best_action(self, stateId):
-    #     return max(self.q_table[stateId])
-
-    # def choose_random_action(self, state):
-    #     rand = random.randint(0, len(self.q_table[state.id]))
-    #     return self.q_table[state.id][rand].actionId
-
-    # Escolhe uma ação da Q-Table ou aleatória, de acordo com a política.
-    # def choose_action(self, state):
-    #     if self.check_state_exist(state.id):
-    #         if np.random.uniform() < self.policy:
-    #             best_action_id = self.choose_best_action(state.id).actionId
-    #         else:
-    #             best_action_id = self.choose_random_action(state.id).actionId
-    #         return best_action_id
-    #     else:
-    #         print("Ocorreu um erro: O estado não se encontra na Q-Table")
-    #         return None
-
-    # def get_q_table_item(self, state, action):
-    #     for qt_item in self.q_table[state.id]:
-    #         if qt_item.actionId == action.id:
-    #             return qt_item
-    #     print("Ocorreu um erro: Não existe esta ação para o referente estado na Q-Table")
-    #     return None
-
-    # def update_q_table_item(self, state, action, q_target, q_predict):
-    #     for qt_item in self.q_table[state.id]:
-    #         if qt_item.actionId == action.id:
-    #             qt_item.value += self.lr * (q_target - q_predict)
-
-    # SARSA
-    # Q(s,a) <- Q(s,a) + alpha*[R + gamma*Q(s_,a_) - Q(s,a)]
-    # alpha = learning rate, gamma = discount factor
-    # def SARSAlearn(self, s, a, r, s_):
-    #     # Assume o valor da ação referente ao 's' e 'a' na Q-Table
-    #     q_predict = self.get_q_table_item(s, a).value
-    #     if self.check_state_exist(s_):
-    #         # Calcula o valor da ação para o próximo estado dado o estado anterior
-    #         q_target = r + self.reward_discount * self.choose_best_action(s_).value
-    #         # q_target = r + self.gamma * self.q_table.ix[s_, :].max()  # next state is not terminal
-    #         # q_target = r  # next state is terminal
-    #     else:
-    #         q_target = r
-    #     # self.q_table.ix[s, a] += self.lr * (q_target - q_predict)  # update
-    #     #Update Q-Table Item
-    #     for qt_item in self.q_table[s.id]:
-    #         if qt_item.actionId == a.id:
-    #             qt_item.value += self.lr * (q_target - q_predict)
-
     # Q-Learning
     # Q(s,a) <- (1 - alpha) * Q(s,a) + alpha * (R + gamma * maxQ(s_,a))
     def Qlearn(self, s, a, r, s_):
@@ -136,6 +86,5 @@ class QLearningTable:
             print(s)
             print(a)
             print(s_)
-            # print(self.get_max_action_value(s_))
             print(self.get_action_value(s,a))
 

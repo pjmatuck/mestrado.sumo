@@ -16,7 +16,6 @@ def animate(i):
         if len(line) > 1:
             line = line.replace('(',"")
             line = line.replace(')',"")
-            # line = line.replace(' ',"")
             x, y = line.split(',')
             xs.append(int(x))
             ys.append(int(y))
